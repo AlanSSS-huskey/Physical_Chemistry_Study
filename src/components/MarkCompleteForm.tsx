@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { getSession } from "@/lib/auth";
 import { toggleChapterComplete } from "@/app/learn/[subject]/[chapter]/actions";
+import Link from "next/link";
 
 export async function MarkCompleteForm({ contentSlug }: { contentSlug: string }) {
   const session = await getSession();
@@ -10,9 +11,9 @@ export async function MarkCompleteForm({ contentSlug }: { contentSlug: string })
     return (
       <div className="rounded-md border bg-zinc-50 p-3 text-sm text-zinc-700">
         想要保存学习进度？请先{" "}
-        <a className="underline" href="/api/auth/signin">
+        <Link className="underline" href="/api/auth/signin">
           登录
-        </a>
+        </Link>
         。
       </div>
     );
