@@ -11,6 +11,7 @@ export type ContentFrontmatter = {
   chapterTitle: string;
   order?: number;
   moduleKey?: string;
+  previewRatio?: number;
 };
 
 export type ChapterNavItem = {
@@ -91,5 +92,24 @@ export async function getMdxBySlug(params: {
   const { data, content } = matter(raw);
   const fm = data as ContentFrontmatter;
   return { frontmatter: fm, content };
+}
+
+export function renderPreview(content: string, ratio: number): string {
+  const safeRatio = Number.isFinite(ratio) ? Math.min(1, Math.max(0, ratio)) : 0.2;
+  if (safeRatio >= 1) return content;
+
+  const blocks = content
+    .split(/\n{2,}/)
+    .map((b) => b.trim())
+    .filter(Boolean);
+
+  if (blocks.length <= 1) {
+    const lines = content.split("\n");
+    const keep = Math.max(1, Math.ceil(lines.length * safeRatio));
+    return lines.slice(0, keep).join("\n");
+  }
+
+  const keepBlocks = Math.max(1, Math.ceil(blocks.length * safeRatio));
+  return blocks.slice(0, keepBlocks).join("\n\n");
 }
 

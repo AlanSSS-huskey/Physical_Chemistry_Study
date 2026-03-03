@@ -163,7 +163,8 @@ model Entitlement {
   // Extra flexible data (e.g. "chapter preview 20%" overrides, tier metadata)
   metadata Json?
 
-  users UserEntitlement[]
+  users         UserEntitlement[]
+  purchaseItems PurchaseItem[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

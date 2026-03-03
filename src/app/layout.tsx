@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 import "katex/dist/katex.min.css";
 import Link from "next/link";
+import { Providers } from "@/app/providers";
+import { AuthNav } from "@/components/AuthNav";
 
 export const metadata: Metadata = {
   title: "Physical Chemistry Study",
@@ -16,22 +18,25 @@ export default function RootLayout({
   return (
     <html lang="zh-CN">
       <body className="min-h-screen bg-white text-zinc-900">
-        <header className="border-b">
-          <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
-            <Link href="/" className="font-semibold">
-              Physical Chemistry Study
-            </Link>
-            <nav className="flex items-center gap-4 text-sm text-zinc-700">
-              <Link href="/learn" className="hover:text-zinc-900">
-                Learn
+        <Providers>
+          <header className="border-b">
+            <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3">
+              <Link href="/" className="font-semibold">
+                Physical Chemistry Study
               </Link>
-              <Link href="/account" className="hover:text-zinc-900">
-                Account
-              </Link>
-            </nav>
-          </div>
-        </header>
-        <main className="mx-auto max-w-6xl px-4 py-6">{children}</main>
+              <nav className="flex flex-1 items-center justify-end gap-4 text-sm text-zinc-700">
+                <Link href="/learn" className="hover:text-zinc-900">
+                  Learn
+                </Link>
+                <Link href="/account" className="hover:text-zinc-900">
+                  Account
+                </Link>
+                <AuthNav />
+              </nav>
+            </div>
+          </header>
+          <main className="mx-auto max-w-6xl px-4 py-6">{children}</main>
+        </Providers>
       </body>
     </html>
   );
