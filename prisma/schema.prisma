@@ -1,0 +1,278 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  FREE
+  PRO
+  ADMIN
+}
+
+enum ModuleType {
+  PACK
+  PLUGIN
+}
+
+enum EntitlementKind {
+  MODULE_ACCESS
+  FEATURE_FLAG
+  CONTENT_ACCESS
+}
+
+enum GrantSource {
+  SUBSCRIPTION
+  PURCHASE
+  MANUAL
+}
+
+enum PurchaseStatus {
+  PENDING
+  PAID
+  REFUNDED
+  CANCELED
+}
+
+enum ProgressStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+
+  role Role @default(FREE)
+
+  // NextAuth tables
+  accounts Account[]
+  sessions Session[]
+
+  // Billing + permissions
+  subscriptions  Subscription[]
+  purchases      Purchase[]
+  entitlements   UserEntitlement[]
+  modules        UserModule[]
+  progressEvents Progress[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// --- NextAuth (Prisma Adapter) ---
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// --- Plugin/Pack marketplace-ish modules ---
+model Module {
+  id          String     @id @default(cuid())
+  key         String     @unique
+  type        ModuleType
+  title       String
+  description String?
+
+  // "上架/下架"
+  isPublished Boolean @default(false)
+  isActive    Boolean @default(true)
+
+  contents     Content[]
+  entitlements Entitlement[]
+  userModules  UserModule[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// A piece of content that can be gated by entitlements.
+// MVP 可先把它当作 “章节记录”，与 MDX 文件 slug 对齐，后续可接 CMS。
+model Content {
+  id          String @id @default(cuid())
+  slug        String @unique // e.g. thermodynamics/intro
+  title       String
+  subjectSlug String
+  chapterSlug String
+
+  // Where the content is sourced from (for MVP: a filesystem path).
+  sourcePath String?
+
+  // Free preview policy: allow previewRatio of the content for non-entitled users.
+  previewRatio Float   @default(0.2)
+  isPublic     Boolean @default(true)
+
+  moduleId String?
+  module   Module? @relation(fields: [moduleId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// An entitlement is the atomic permission unit.
+// Subscription tiers / one-time purchases / manual grants all map to entitlements.
+model Entitlement {
+  id   String          @id @default(cuid())
+  key  String          @unique // e.g. module:thermo-pack, feature:mistake-book
+  kind EntitlementKind
+
+  // Optional pointers to what it unlocks.
+  moduleId    String?
+  module      Module? @relation(fields: [moduleId], references: [id], onDelete: SetNull)
+  featureKey  String?
+  contentSlug String?
+
+  // Extra flexible data (e.g. "chapter preview 20%" overrides, tier metadata)
+  metadata Json?
+
+  users UserEntitlement[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model UserEntitlement {
+  id            String      @id @default(cuid())
+  userId        String
+  entitlementId String
+  source        GrantSource
+  expiresAt     DateTime?
+
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  entitlement Entitlement @relation(fields: [entitlementId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([userId, entitlementId])
+  @@index([userId])
+  @@index([entitlementId])
+}
+
+// User-installed/enabled modules (preference layer).
+// Entitlement says "may use"; this says "is enabled".
+model UserModule {
+  id       String @id @default(cuid())
+  userId   String
+  moduleId String
+  enabled  Boolean @default(true)
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  module Module @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+
+  installedAt DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([userId, moduleId])
+  @@index([userId])
+  @@index([moduleId])
+}
+
+// --- Stripe billing records (skeleton) ---
+model Subscription {
+  id     String @id @default(cuid())
+  userId String
+
+  provider String @default("stripe")
+  status   String // keep as string to match Stripe statuses
+
+  stripeCustomerId     String?
+  stripeSubscriptionId String? @unique
+  stripePriceId        String?
+
+  currentPeriodEnd   DateTime?
+  cancelAtPeriodEnd  Boolean  @default(false)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model Purchase {
+  id     String @id @default(cuid())
+  userId String
+
+  provider String @default("stripe")
+  status   PurchaseStatus @default(PENDING)
+
+  stripeCheckoutSessionId String? @unique
+  stripePaymentIntentId   String?
+
+  items PurchaseItem[]
+  user  User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model PurchaseItem {
+  id            String @id @default(cuid())
+  purchaseId    String
+  entitlementId String
+
+  purchase    Purchase    @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+  entitlement Entitlement @relation(fields: [entitlementId], references: [id], onDelete: Cascade)
+
+  @@unique([purchaseId, entitlementId])
+}
+
+// --- Minimal learning progress ---
+model Progress {
+  id        String         @id @default(cuid())
+  userId    String
+  contentSlug String       // aligns with Content.slug and/or MDX route
+  status    ProgressStatus @default(NOT_STARTED)
+  completedAt DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, contentSlug])
+  @@index([userId])
+  @@index([contentSlug])
+}
+
