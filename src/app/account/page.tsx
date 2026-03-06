@@ -3,8 +3,6 @@ import { getCurrentUser, getGoogleOAuthConfig } from "@/lib/auth";
 
 export default async function AccountPage() {
   const authConfigured = getGoogleOAuthConfig().configured;
-  const user = await getCurrentUser();
-
   if (!authConfigured) {
     return (
       <div className="space-y-6">
@@ -18,6 +16,8 @@ export default async function AccountPage() {
       </div>
     );
   }
+
+  const user = await getCurrentUser();
 
   if (!user) {
     redirect("/api/auth/signin");

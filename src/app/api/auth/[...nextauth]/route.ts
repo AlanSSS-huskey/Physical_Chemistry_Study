@@ -1,13 +1,17 @@
 import NextAuth from "next-auth";
-import { getAuthOptions, getGoogleOAuthConfig } from "@/lib/auth";
+import { getAuthOptions, getGoogleOAuthConfig, isDatabaseConfigured } from "@/lib/auth";
 
 function missingConfigResponse() {
   const authSecretConfigured = Boolean(process.env.NEXTAUTH_SECRET ?? process.env.AUTH_SECRET);
+  const databaseConfigured = isDatabaseConfigured();
 
   return new Response(
     [
       "Auth is not configured.",
       "Set env vars:",
+      databaseConfigured
+        ? "- DATABASE_URL is configured"
+        : "- DATABASE_URL",
       "- GOOGLE_CLIENT_ID (or AUTH_GOOGLE_ID)",
       "- GOOGLE_CLIENT_SECRET (or AUTH_GOOGLE_SECRET)",
       authSecretConfigured
@@ -23,7 +27,7 @@ const nextAuthHandler = NextAuth(getAuthOptions());
 
 function ensureAuthConfigured() {
   const google = getGoogleOAuthConfig();
-  return google.configured;
+  return google.configured && isDatabaseConfigured();
 }
 
 export async function GET(req: Request) {

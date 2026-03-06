@@ -15,12 +15,23 @@ export function getAuthSecret() {
   return process.env.NEXTAUTH_SECRET ?? process.env.AUTH_SECRET ?? "";
 }
 
+export function isDatabaseConfigured() {
+  return Boolean(process.env.DATABASE_URL?.trim());
+}
+
 export function getAuthOptions(): NextAuthOptions {
   const google = getGoogleOAuthConfig();
+  const useDbSession = isDatabaseConfigured();
 
   return {
-    adapter: PrismaAdapter(prisma),
-    session: { strategy: "database" },
+    ...(useDbSession
+      ? {
+          adapter: PrismaAdapter(prisma),
+          session: { strategy: "database" as const }
+        }
+      : {
+          session: { strategy: "jwt" as const }
+        }),
     providers: google.configured
       ? [
           GoogleProvider({
@@ -31,9 +42,9 @@ export function getAuthOptions(): NextAuthOptions {
       : [],
     secret: getAuthSecret() || undefined,
     callbacks: {
-      async session({ session, user }) {
+      async session({ session, user, token }) {
         if (session.user) {
-          session.user.id = user.id;
+          session.user.id = user?.id ?? token?.sub ?? "";
         }
         return session;
       }
@@ -41,8 +52,15 @@ export function getAuthOptions(): NextAuthOptions {
   };
 }
 
-export function getSession() {
-  return getServerSession(getAuthOptions());
+export async function getSession() {
+  try {
+    return await getServerSession(getAuthOptions());
+  } catch (error) {
+    if (process.env.NODE_ENV !== "production") {
+      console.error("getSession failed:", error);
+    }
+    return null;
+  }
 }
 
 export async function getCurrentUser() {
