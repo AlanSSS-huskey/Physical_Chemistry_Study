@@ -3,16 +3,14 @@ import Stripe from "stripe";
 
 export const runtime = "nodejs";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY ?? "");
-
 export async function POST(req: Request) {
   const secret = process.env.STRIPE_WEBHOOK_SECRET;
-  if (!secret) {
-    return new Response("Missing STRIPE_WEBHOOK_SECRET", { status: 500 });
+  const apiKey = process.env.STRIPE_SECRET_KEY;
+  if (!secret || !apiKey) {
+    return new Response("Stripe not configured (STRIPE_WEBHOOK_SECRET / STRIPE_SECRET_KEY)", { status: 500 });
   }
-  if (!process.env.STRIPE_SECRET_KEY) {
-    return new Response("Missing STRIPE_SECRET_KEY", { status: 500 });
-  }
+
+  const stripe = new Stripe(apiKey);
 
   const body = await req.text();
   const sig = (await headers()).get("stripe-signature");
