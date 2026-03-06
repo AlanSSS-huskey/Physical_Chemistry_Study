@@ -1,9 +1,24 @@
 import { redirect } from "next/navigation";
-import { getSession } from "@/lib/auth";
+import { getSession, getGoogleOAuthConfig } from "@/lib/auth";
 
 export default async function AccountPage() {
+  const authConfigured = getGoogleOAuthConfig().configured;
   const session = await getSession();
   const user = session?.user as { id?: string; email?: string | null; name?: string | null } | undefined;
+
+  if (!authConfigured) {
+    return (
+      <div className="space-y-6">
+        <div className="space-y-1">
+          <h1 className="text-2xl font-semibold tracking-tight">Account</h1>
+          <p className="text-sm text-zinc-700">登录功能待配置。配置 GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET 后即可使用 Google 登录。</p>
+        </div>
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+          预留结构已就绪，详见 README 中的「Google OAuth 配置」说明。
+        </div>
+      </div>
+    );
+  }
 
   if (!user?.id) {
     redirect("/api/auth/signin");

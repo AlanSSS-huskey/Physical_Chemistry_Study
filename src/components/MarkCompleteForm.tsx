@@ -1,20 +1,27 @@
 import { prisma } from "@/lib/db";
-import { getSession } from "@/lib/auth";
+import { getSession, getGoogleOAuthConfig } from "@/lib/auth";
 import { toggleChapterComplete } from "@/app/learn/[subject]/[chapter]/actions";
 import Link from "next/link";
 
 export async function MarkCompleteForm({ contentSlug }: { contentSlug: string }) {
+  const authConfigured = getGoogleOAuthConfig().configured;
   const session = await getSession();
   const user = session?.user as { id?: string } | undefined;
 
   if (!user?.id) {
     return (
       <div className="rounded-md border bg-zinc-50 p-3 text-sm text-zinc-700">
-        想要保存学习进度？请先{" "}
-        <Link className="underline" href="/api/auth/signin">
-          登录
-        </Link>
-        。
+        {authConfigured ? (
+          <>
+            想要保存学习进度？请先{" "}
+            <Link className="underline" href="/api/auth/signin">
+              登录
+            </Link>
+            。
+          </>
+        ) : (
+          <>学习进度需登录，登录功能待配置。</>
+        )}
       </div>
     );
   }

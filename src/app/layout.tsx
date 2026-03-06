@@ -4,17 +4,19 @@ import "katex/dist/katex.min.css";
 import Link from "next/link";
 import { Providers } from "@/app/providers";
 import { AuthNav } from "@/components/AuthNav";
+import { getGoogleOAuthConfig } from "@/lib/auth";
 
 export const metadata: Metadata = {
   title: "Physical Chemistry Study",
   description: "A Save My Exams-style study site (MVP skeleton)"
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const authConfigured = getGoogleOAuthConfig().configured;
   return (
     <html lang="zh-CN">
       <body className="min-h-screen bg-white text-zinc-900">
@@ -31,7 +33,7 @@ export default function RootLayout({
                 <Link href="/account" className="hover:text-zinc-900">
                   Account
                 </Link>
-                <AuthNav />
+                <AuthNav authConfigured={authConfigured} />
               </nav>
             </div>
           </header>

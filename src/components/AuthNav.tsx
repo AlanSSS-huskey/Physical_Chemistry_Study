@@ -2,7 +2,7 @@
 
 import { signIn, signOut, useSession } from "next-auth/react";
 
-export function AuthNav() {
+export function AuthNav({ authConfigured = false }: { authConfigured?: boolean }) {
   const { data, status } = useSession();
   const user = data?.user;
 
@@ -11,6 +11,11 @@ export function AuthNav() {
   }
 
   if (!user) {
+    if (!authConfigured) {
+      return (
+        <span className="text-sm text-zinc-400">登录（待配置）</span>
+      );
+    }
     return (
       <button
         onClick={() => signIn("google")}
