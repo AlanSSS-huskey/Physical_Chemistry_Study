@@ -20,7 +20,7 @@
     "katex": "^0.16.22",
     "next": "^15.2.0",
     "next-auth": "^4.24.11",
-    "next-mdx-remote": "^5.0.0",
+    "next-mdx-remote": "^6.0.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "remark-math": "^6.0.0",
