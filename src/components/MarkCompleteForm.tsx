@@ -1,14 +1,13 @@
 import { prisma } from "@/lib/db";
-import { getSession, getGoogleOAuthConfig } from "@/lib/auth";
+import { getCurrentUser, getGoogleOAuthConfig } from "@/lib/auth";
 import { toggleChapterComplete } from "@/app/learn/[subject]/[chapter]/actions";
 import Link from "next/link";
 
 export async function MarkCompleteForm({ contentSlug }: { contentSlug: string }) {
   const authConfigured = getGoogleOAuthConfig().configured;
-  const session = await getSession();
-  const user = session?.user as { id?: string } | undefined;
+  const user = await getCurrentUser();
 
-  if (!user?.id) {
+  if (!user) {
     return (
       <div className="rounded-md border bg-zinc-50 p-3 text-sm text-zinc-700">
         {authConfigured ? (
@@ -48,4 +47,3 @@ export async function MarkCompleteForm({ contentSlug }: { contentSlug: string })
     </form>
   );
 }
-

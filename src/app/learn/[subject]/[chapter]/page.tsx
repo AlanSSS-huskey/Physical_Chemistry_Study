@@ -1,8 +1,9 @@
 import { MdxRenderer } from "@/components/MdxRenderer";
-import { getMdxBySlug, renderPreview } from "@/lib/content";
-import { getSession } from "@/lib/auth";
+import { ContentNotFoundError, getMdxBySlug, renderPreview } from "@/lib/content";
+import { getCurrentUser } from "@/lib/auth";
 import { canAccessModule } from "@/lib/entitlements";
 import { MarkCompleteForm } from "@/components/MarkCompleteForm";
+import { notFound } from "next/navigation";
 
 export default async function ChapterPage({
   params
@@ -10,16 +11,37 @@ export default async function ChapterPage({
   params: Promise<{ subject: string; chapter: string }>;
 }) {
   const { subject, chapter } = await params;
-  const { frontmatter, content } = await getMdxBySlug({ subject, chapter });
-  const contentSlug = `${subject}/${chapter}`;
+  const decodedSubject = decodeURIComponent(subject);
+  const decodedChapter = decodeURIComponent(chapter);
+  let frontmatter;
+  let content;
 
-  const session = await getSession();
-  const user = session?.user as { id?: string } | undefined;
+  try {
+    const mdx = await getMdxBySlug({
+      subject: decodedSubject,
+      chapter: decodedChapter
+    });
+    frontmatter = mdx.frontmatter;
+    content = mdx.content;
+  } catch (error) {
+    if (error instanceof ContentNotFoundError) {
+      notFound();
+    }
+    throw error;
+  }
 
-  const previewRatio = typeof frontmatter.previewRatio === "number" ? frontmatter.previewRatio : 0.2;
+  const contentSlug = `${decodedSubject}/${decodedChapter}`;
+
+  const user = await getCurrentUser();
+
+  const previewRatio =
+    typeof frontmatter.previewRatio === "number" ? frontmatter.previewRatio : 0.2;
   const requiresModule = Boolean(frontmatter.moduleKey);
   const hasAccess =
-    !requiresModule || (user?.id ? await canAccessModule({ userId: user.id, moduleKey: frontmatter.moduleKey! }) : false);
+    !requiresModule ||
+    (user?.id
+      ? await canAccessModule({ userId: user.id, moduleKey: frontmatter.moduleKey! })
+      : false);
 
   const isPreview = requiresModule && !hasAccess;
   const rendered = isPreview ? renderPreview(content, previewRatio) : content;
@@ -48,4 +70,3 @@ export default async function ChapterPage({
     </article>
   );
 }
-

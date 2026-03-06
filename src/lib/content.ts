@@ -26,6 +26,53 @@ export type SubjectNavItem = {
   chapters: ChapterNavItem[];
 };
 
+export class ContentNotFoundError extends Error {
+  constructor(public readonly subject: string, public readonly chapter: string) {
+    super(`Content not found for ${subject}/${chapter}`);
+    this.name = "ContentNotFoundError";
+  }
+}
+
+function asNonEmptyString(value: unknown): string | null {
+  return typeof value === "string" && value.trim() ? value : null;
+}
+
+function asNumber(value: unknown): number | undefined {
+  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
+}
+
+function parseFrontmatter(
+  data: unknown
+): ContentFrontmatter | null {
+  if (!data || typeof data !== "object") return null;
+
+  const record = data as Record<string, unknown>;
+  const subject = asNonEmptyString(record.subject);
+  const subjectTitle = asNonEmptyString(record.subjectTitle);
+  const chapter = asNonEmptyString(record.chapter);
+  const chapterTitle = asNonEmptyString(record.chapterTitle);
+
+  if (!subject || !subjectTitle || !chapter || !chapterTitle) {
+    return null;
+  }
+
+  const previewRatioRaw = asNumber(record.previewRatio);
+  const previewRatio =
+    previewRatioRaw === undefined
+      ? undefined
+      : Math.min(1, Math.max(0, previewRatioRaw));
+
+  return {
+    subject,
+    subjectTitle,
+    chapter,
+    chapterTitle,
+    order: asNumber(record.order),
+    moduleKey: asNonEmptyString(record.moduleKey) ?? undefined,
+    previewRatio
+  };
+}
+
 export async function listMdxFiles(): Promise<string[]> {
   const out: string[] = [];
 
@@ -38,7 +85,19 @@ export async function listMdxFiles(): Promise<string[]> {
     }
   }
 
-  await walk(CONTENT_ROOT);
+  try {
+    await walk(CONTENT_ROOT);
+  } catch (error) {
+    if (
+      error &&
+      typeof error === "object" &&
+      "code" in error &&
+      error.code === "ENOENT"
+    ) {
+      return [];
+    }
+    throw error;
+  }
   return out;
 }
 
@@ -49,8 +108,8 @@ export async function getNavigationTree(): Promise<{ subjects: SubjectNavItem[] 
   for (const file of files) {
     const raw = await fs.readFile(file, "utf8");
     const { data } = matter(raw);
-    const fm = data as Partial<ContentFrontmatter>;
-    if (!fm.subject || !fm.subjectTitle || !fm.chapter || !fm.chapterTitle) continue;
+    const fm = parseFrontmatter(data);
+    if (!fm) continue;
 
     const subjectSlug = fm.subject;
     const chapterSlug = fm.chapter;
@@ -75,10 +134,12 @@ export async function getNavigationTree(): Promise<{ subjects: SubjectNavItem[] 
 
   const subjects = [...bySubject.values()].map((s) => ({
     ...s,
-    chapters: [...s.chapters].sort((a, b) => a.order - b.order)
+    chapters: [...s.chapters].sort(
+      (a, b) => a.order - b.order || a.title.localeCompare(b.title)
+    )
   }));
 
-  subjects.sort((a, b) => a.title.localeCompare(b.title));
+  subjects.sort((a, b) => a.title.localeCompare(b.title) || a.slug.localeCompare(b.slug));
 
   return { subjects };
 }
@@ -88,9 +149,25 @@ export async function getMdxBySlug(params: {
   chapter: string;
 }): Promise<{ frontmatter: ContentFrontmatter; content: string }> {
   const file = path.join(CONTENT_ROOT, params.subject, `${params.chapter}.mdx`);
-  const raw = await fs.readFile(file, "utf8");
+  let raw: string;
+  try {
+    raw = await fs.readFile(file, "utf8");
+  } catch (error) {
+    if (
+      error &&
+      typeof error === "object" &&
+      "code" in error &&
+      error.code === "ENOENT"
+    ) {
+      throw new ContentNotFoundError(params.subject, params.chapter);
+    }
+    throw error;
+  }
   const { data, content } = matter(raw);
-  const fm = data as ContentFrontmatter;
+  const fm = parseFrontmatter(data);
+  if (!fm) {
+    throw new Error(`Invalid frontmatter in ${file}`);
+  }
   return { frontmatter: fm, content };
 }
 
@@ -112,4 +189,3 @@ export function renderPreview(content: string, ratio: number): string {
   const keepBlocks = Math.max(1, Math.ceil(blocks.length * safeRatio));
   return blocks.slice(0, keepBlocks).join("\n\n");
 }
-

@@ -33,8 +33,7 @@ export function getAuthOptions(): NextAuthOptions {
     callbacks: {
       async session({ session, user }) {
         if (session.user) {
-          // expose user id to server actions/pages
-          (session.user as { id?: string }).id = user.id;
+          session.user.id = user.id;
         }
         return session;
       }
@@ -46,3 +45,7 @@ export function getSession() {
   return getServerSession(getAuthOptions());
 }
 
+export async function getCurrentUser() {
+  const session = await getSession();
+  return session?.user ?? null;
+}

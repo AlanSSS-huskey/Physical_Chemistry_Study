@@ -1,10 +1,9 @@
 import { redirect } from "next/navigation";
-import { getSession, getGoogleOAuthConfig } from "@/lib/auth";
+import { getCurrentUser, getGoogleOAuthConfig } from "@/lib/auth";
 
 export default async function AccountPage() {
   const authConfigured = getGoogleOAuthConfig().configured;
-  const session = await getSession();
-  const user = session?.user as { id?: string; email?: string | null; name?: string | null } | undefined;
+  const user = await getCurrentUser();
 
   if (!authConfigured) {
     return (
@@ -20,7 +19,7 @@ export default async function AccountPage() {
     );
   }
 
-  if (!user?.id) {
+  if (!user) {
     redirect("/api/auth/signin");
   }
 
@@ -42,4 +41,3 @@ export default async function AccountPage() {
     </div>
   );
 }
-
