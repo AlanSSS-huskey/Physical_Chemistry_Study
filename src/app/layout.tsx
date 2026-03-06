@@ -8,7 +8,7 @@ import { getGoogleOAuthConfig } from "@/lib/auth";
 
 export const metadata: Metadata = {
   title: "Physical Chemistry Study",
-  description: "A Save My Exams-style study site (MVP skeleton)"
+  description: "Physical Chemistry 学习站点（MVP）"
 };
 
 export default async function RootLayout({
@@ -28,10 +28,10 @@ export default async function RootLayout({
               </Link>
               <nav className="flex flex-1 items-center justify-end gap-4 text-sm text-zinc-700">
                 <Link href="/learn" className="hover:text-zinc-900">
-                  Learn
+                  学习
                 </Link>
                 <Link href="/account" className="hover:text-zinc-900">
-                  Account
+                  账户
                 </Link>
                 <AuthNav authConfigured={authConfigured} />
               </nav>
@@ -43,4 +43,3 @@ export default async function RootLayout({
     </html>
   );
 }
-

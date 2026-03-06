@@ -1,14 +1,29 @@
 import { prisma } from "@/lib/db";
+import { cache } from "react";
+
+function normalizeKey(input: string): string {
+  return input.trim().toLowerCase();
+}
 
 export async function userHasEntitlement(params: {
   userId: string;
   entitlementKey: string;
 }): Promise<boolean> {
+  return userHasEntitlementByKeyCached(params.userId, params.entitlementKey);
+}
+
+async function userHasEntitlementByKey(
+  userId: string,
+  entitlementKey: string
+): Promise<boolean> {
+  const normalizedKey = normalizeKey(entitlementKey);
+  if (!normalizedKey) return false;
+
   const now = new Date();
   const hit = await prisma.userEntitlement.findFirst({
     where: {
-      userId: params.userId,
-      entitlement: { key: params.entitlementKey },
+      userId,
+      entitlement: { key: normalizedKey },
       OR: [{ expiresAt: null }, { expiresAt: { gt: now } }]
     },
     select: { id: true }
@@ -28,10 +43,15 @@ export async function canAccessModule(params: {
   userId: string;
   moduleKey: string;
 }): Promise<boolean> {
-  if (await userIsAdmin(params.userId)) return true;
-  return userHasEntitlement({
-    userId: params.userId,
-    entitlementKey: `module:${params.moduleKey}`
-  });
+  const normalizedModuleKey = normalizeKey(params.moduleKey);
+  if (!normalizedModuleKey) return false;
+
+  if (await userIsAdminCached(params.userId)) return true;
+  return userHasEntitlementByKeyCached(
+    params.userId,
+    `module:${normalizedModuleKey}`
+  );
 }
 
+const userIsAdminCached = cache(userIsAdmin);
+const userHasEntitlementByKeyCached = cache(userHasEntitlementByKey);
