@@ -7,7 +7,31 @@ body {
   height: 100%;
 }
 
+body {
+  background:
+    radial-gradient(1200px 600px at 10% -20%, #dbeafe 0%, transparent 60%),
+    radial-gradient(1000px 500px at 100% 0%, #fef3c7 0%, transparent 55%),
+    #f8fafc;
+  color: #0f172a;
+}
+
+a {
+  transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease;
+}
+
+::selection {
+  background: #bfdbfe;
+  color: #0f172a;
+}
+
 .prose :where(code):not(:where(pre code)) {
   @apply rounded bg-zinc-100 px-1 py-0.5 text-zinc-900;
 }
 
+.prose :where(h1, h2, h3) {
+  @apply font-semibold tracking-tight text-slate-900;
+}
+
+.prose :where(blockquote) {
+  @apply border-l-4 border-blue-200 bg-blue-50/70 py-1;
+}

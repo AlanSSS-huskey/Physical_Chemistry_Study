@@ -9,7 +9,7 @@ export async function MarkCompleteForm({ contentSlug }: { contentSlug: string })
 
   if (!user) {
     return (
-      <div className="rounded-md border bg-zinc-50 p-3 text-sm text-zinc-700">
+      <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
         {authConfigured ? (
           <>
             想要保存学习进度？请先{" "}
@@ -38,8 +38,8 @@ export async function MarkCompleteForm({ contentSlug }: { contentSlug: string })
         type="submit"
         className={
           isCompleted
-            ? "rounded-md border bg-green-50 px-3 py-2 text-sm font-medium text-green-800 hover:bg-green-100"
-            : "rounded-md border px-3 py-2 text-sm font-medium hover:bg-zinc-50"
+            ? "rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-800 hover:bg-emerald-100"
+            : "rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:border-blue-300 hover:text-blue-700"
         }
       >
         {isCompleted ? "Marked complete (click to undo)" : "Mark as complete"}

@@ -9,12 +9,12 @@ export function AuthNav({ authConfigured = false }: { authConfigured?: boolean }
   const pathname = usePathname();
 
   if (status === "loading") {
-    return <div className="text-sm text-zinc-500">正在加载...</div>;
+    return <div className="text-sm text-slate-500">正在加载...</div>;
   }
 
   if (!user) {
     if (!authConfigured) {
-      return <span className="text-sm text-zinc-400">登录（待配置）</span>;
+      return <span className="text-sm text-slate-400">登录（待配置）</span>;
     }
     return (
       <button
@@ -23,7 +23,7 @@ export function AuthNav({ authConfigured = false }: { authConfigured?: boolean }
             callbackUrl: pathname || "/"
           })
         }
-        className="rounded-md border px-3 py-1.5 text-sm font-medium hover:bg-zinc-50"
+        className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 shadow-sm hover:border-blue-300 hover:text-blue-700"
       >
         登录
       </button>
@@ -32,10 +32,10 @@ export function AuthNav({ authConfigured = false }: { authConfigured?: boolean }
 
   return (
     <div className="flex items-center gap-3">
-      <div className="text-sm text-zinc-700">{user.email ?? user.name}</div>
+      <div className="text-sm text-slate-600">{user.email ?? user.name}</div>
       <button
         onClick={() => signOut()}
-        className="rounded-md border px-3 py-1.5 text-sm font-medium hover:bg-zinc-50"
+        className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 shadow-sm hover:border-rose-300 hover:text-rose-700"
       >
         退出
       </button>

@@ -95,6 +95,11 @@ src/
 - `STRIPE_SECRET_KEY`
 - `STRIPE_WEBHOOK_SECRET`
 
+要启用 Admin 编辑页（`/admin`）还需要：
+
+- `ADMIN_PAGE_PASSWORD`
+- `ADMIN_COOKIE_SECRET`（可选；不填则复用 `NEXTAUTH_SECRET`）
+
 ## 本地启动步骤（从 0 到跑起来）
 
 ### 1) 安装依赖（你需要自己准备）
@@ -114,7 +119,7 @@ src/
 cp .env.example .env
 ```
 
-编辑 `.env`，填好 `DATABASE_URL`（以及登录/Stripe 需要的变量）。
+编辑 `.env`，填好 `DATABASE_URL`（以及登录/Stripe/Admin 需要的变量）。
 
 ### 4) Prisma 建表
 
@@ -134,6 +139,8 @@ npm run dev
 - `/learn` 学科/章节导航
 - `/learn/thermodynamics/intro`（默认会进入“预览模式”，除非你给当前用户授予了 `module:thermo-pack` entitlement）
 - `/account`（会跳到 Google 登录）
+- `/admin/login`（登录后输入 Admin 密码）
+- `/admin`（可编辑后台草稿内容，保存到 `content/admin/notes.md`）
 
 ## 未来扩展路线（插件/内容包/订阅）
 
@@ -155,4 +162,3 @@ npm run dev
 - **模块访问**：`module:${moduleKey}`
 - **功能开关**：`feature:${featureKey}`
 - **内容解锁**：`content:${contentSlug}`（或 `Content` 表里细粒度策略）
-

@@ -4,7 +4,7 @@ import rehypeKatex from "rehype-katex";
 
 export function MdxRenderer({ source }: { source: string }) {
   return (
-    <div className="prose prose-zinc max-w-none">
+    <div className="prose prose-slate max-w-none text-slate-700">
       <MDXRemote
         source={source}
         options={{
@@ -17,4 +17,3 @@ export function MdxRenderer({ source }: { source: string }) {
     </div>
   );
 }
-
