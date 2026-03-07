@@ -35,3 +35,7 @@ a {
 .prose :where(blockquote) {
   @apply border-l-4 border-blue-200 bg-blue-50/70 py-1;
 }
+
+.prose :where(img) {
+  @apply my-5 h-auto max-w-full rounded-lg border border-slate-200;
+}

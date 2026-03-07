@@ -8,8 +8,7 @@ datasource db {
 }
 
 enum Role {
-  FREE
-  PRO
+  USER
   ADMIN
 }
 
@@ -50,7 +49,7 @@ model User {
   emailVerified DateTime?
   image         String?
 
-  role Role @default(FREE)
+  role Role @default(USER)
 
   // NextAuth tables
   accounts Account[]
@@ -62,6 +61,7 @@ model User {
   entitlements   UserEntitlement[]
   modules        UserModule[]
   progressEvents Progress[]
+  imageAssets    ImageAsset[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -130,8 +130,10 @@ model Content {
   id          String @id @default(cuid())
   slug        String @unique // e.g. thermodynamics/intro
   title       String
-  subjectSlug String
-  chapterSlug String
+  module      String?
+  body        String @default("") @db.Text
+  subjectSlug String?
+  chapterSlug String?
 
   // Where the content is sourced from (for MVP: a filesystem path).
   sourcePath String?
@@ -140,11 +142,25 @@ model Content {
   previewRatio Float   @default(0.2)
   isPublic     Boolean @default(true)
 
-  moduleId String?
-  module   Module? @relation(fields: [moduleId], references: [id], onDelete: SetNull)
+  moduleId  String?
+  moduleRel Module? @relation(fields: [moduleId], references: [id], onDelete: SetNull)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model ImageAsset {
+  id         String   @id @default(cuid())
+  filename   String
+  url        String   @unique
+  size       Int
+  uploadedBy String
+  createdAt  DateTime @default(now())
+
+  user User @relation(fields: [uploadedBy], references: [id], onDelete: Cascade)
+
+  @@index([uploadedBy])
+  @@index([createdAt])
 }
 
 // An entitlement is the atomic permission unit.
@@ -276,4 +292,3 @@ model Progress {
   @@index([userId])
   @@index([contentSlug])
 }
-

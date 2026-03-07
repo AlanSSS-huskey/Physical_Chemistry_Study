@@ -21,7 +21,7 @@
 
 核心表（满足 “插件/内容包/订阅映射 entitlement” 骨架）：
 
-- **`User`**：用户 + `role`（FREE/PRO/ADMIN）
+- **`User`**：用户 + `role`（USER/ADMIN）
 - **`Module`**：内容包/插件（PACK/PLUGIN），用 `key` 唯一标识（如 `thermo-pack`）
 - **`Entitlement`**：权限原子单元（`module:thermo-pack` / `feature:mistake-book` 等）
 - **`UserEntitlement`**：给用户授予 entitlement（来源可为订阅/购买/手动）
@@ -97,8 +97,7 @@ src/
 
 要启用 Admin 编辑页（`/admin`）还需要：
 
-- `ADMIN_PAGE_PASSWORD`
-- `ADMIN_COOKIE_SECRET`（可选；不填则复用 `NEXTAUTH_SECRET`）
+- 确保登录用户在 `User.role` 中为 `ADMIN`
 
 ## 本地启动步骤（从 0 到跑起来）
 
@@ -119,7 +118,7 @@ src/
 cp .env.example .env
 ```
 
-编辑 `.env`，填好 `DATABASE_URL`（以及登录/Stripe/Admin 需要的变量）。
+编辑 `.env`，填好 `DATABASE_URL`（以及登录/Stripe 需要的变量）。
 
 ### 4) Prisma 建表
 
@@ -139,8 +138,10 @@ npm run dev
 - `/learn` 学科/章节导航
 - `/learn/thermodynamics/intro`（默认会进入“预览模式”，除非你给当前用户授予了 `module:thermo-pack` entitlement）
 - `/account`（会跳到 Google 登录）
-- `/admin/login`（登录后输入 Admin 密码）
-- `/admin`（可编辑后台草稿内容，保存到 `content/admin/notes.md`）
+- `/admin`（ADMIN 角色后台文章管理）
+- `/admin/edit/new`（新建文章）
+- `/admin/images`（图片资源管理）
+- `/notes`（公开文章列表）
 
 ## 未来扩展路线（插件/内容包/订阅）
 
@@ -162,3 +163,34 @@ npm run dev
 - **模块访问**：`module:${moduleKey}`
 - **功能开关**：`feature:${featureKey}`
 - **内容解锁**：`content:${contentSlug}`（或 `Content` 表里细粒度策略）
+
+## Admin 内容系统（新增）
+
+- **后台入口**：`/admin`（仅 `User.role = ADMIN` 可访问）
+- **文章管理**：新建、编辑、删除、列表查看（`/admin/edit/[id]`）
+- **图片管理**：`/admin/images`，支持复制 URL 与删除资源
+- **前台阅读**：`/notes`、`/notes/[slug]`
+
+### 图片上传接口
+
+- `POST /api/upload-image`
+- 表单字段：`file`（multipart/form-data）
+- 支持类型：`jpg` / `jpeg` / `png` / `webp`
+- 单文件大小限制：5MB
+- 存储目录：`public/uploads`
+- 返回：`{ "url": "/uploads/..." }`
+
+### 数据库新增
+
+- `Content.body`（Markdown/MDX 正文）
+- `Content.module`（模块/学科）
+- `ImageAsset`（上传图片记录，关联 `User`）
+- `User.role` 调整为 `USER | ADMIN`
+
+### 设置管理员
+
+首次需要手动把你的账号设为管理员，例如在数据库执行：
+
+```sql
+UPDATE "User" SET "role" = 'ADMIN' WHERE "email" = 'your-email@example.com';
+```

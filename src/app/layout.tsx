@@ -30,6 +30,9 @@ export default async function RootLayout({
                 <Link href="/learn" className="rounded-md px-3 py-1.5 hover:bg-slate-100 hover:text-slate-900">
                   学习
                 </Link>
+                <Link href="/notes" className="rounded-md px-3 py-1.5 hover:bg-slate-100 hover:text-slate-900">
+                  Notes
+                </Link>
                 <Link href="/account" className="rounded-md px-3 py-1.5 hover:bg-slate-100 hover:text-slate-900">
                   账户
                 </Link>
