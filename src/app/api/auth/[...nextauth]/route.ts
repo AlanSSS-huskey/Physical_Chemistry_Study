@@ -35,7 +35,7 @@ function formatAuthError(prefix: string, error: unknown): string {
   const message = error instanceof Error ? error.message : String(error);
   const stack = error instanceof Error ? error.stack ?? "" : "";
   if (!shouldExposeDebugDetails()) {
-    return `${prefix} (see server logs).`;
+    return `${prefix}\n\nmessage: ${message}`;
   }
   return [prefix, `message: ${message}`, stack ? `stack:\n${stack}` : ""]
     .filter(Boolean)
