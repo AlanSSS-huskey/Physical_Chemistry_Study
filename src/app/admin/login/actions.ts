@@ -1,7 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, getGoogleOAuthConfig } from "@/lib/auth";
 import {
   createAdminSession,
   isAdminPasswordConfigured,
@@ -9,9 +9,14 @@ import {
 } from "@/lib/admin";
 
 export async function loginAdmin(formData: FormData) {
+  const authConfigured = getGoogleOAuthConfig().configured;
   const user = await getCurrentUser();
-  if (!user) {
+  if (authConfigured && !user) {
     redirect("/api/auth/signin?callbackUrl=/admin/login");
+  }
+  const principalId = authConfigured ? user?.id : "password-only-admin";
+  if (!principalId) {
+    redirect("/admin/login?error=auth");
   }
 
   if (!isAdminPasswordConfigured()) {
@@ -23,6 +28,6 @@ export async function loginAdmin(formData: FormData) {
     redirect("/admin/login?error=invalid");
   }
 
-  await createAdminSession(user.id);
+  await createAdminSession(principalId);
   redirect("/admin");
 }

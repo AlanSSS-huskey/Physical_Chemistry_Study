@@ -8,7 +8,13 @@ export function getGoogleOAuthConfig() {
   const clientId = process.env.GOOGLE_CLIENT_ID ?? process.env.AUTH_GOOGLE_ID ?? "";
   const clientSecret =
     process.env.GOOGLE_CLIENT_SECRET ?? process.env.AUTH_GOOGLE_SECRET ?? "";
-  return { clientId, clientSecret, configured: Boolean(clientId && clientSecret) };
+  const disabled = process.env.DISABLE_GOOGLE_LOGIN === "true";
+  return {
+    clientId,
+    clientSecret,
+    disabled,
+    configured: !disabled && Boolean(clientId && clientSecret)
+  };
 }
 
 export function getAuthSecret() {

@@ -1,7 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { redirect } from "next/navigation";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, getGoogleOAuthConfig } from "@/lib/auth";
 import { hasAdminSession } from "@/lib/admin";
 import { logoutAdmin, saveAdminNotes } from "@/app/admin/actions";
 
@@ -23,12 +23,17 @@ type Props = {
 };
 
 export default async function AdminPage({ searchParams }: Props) {
+  const authConfigured = getGoogleOAuthConfig().configured;
   const user = await getCurrentUser();
-  if (!user) {
+  if (authConfigured && !user) {
     redirect("/api/auth/signin?callbackUrl=/admin");
   }
+  const principalId = authConfigured ? user?.id : "password-only-admin";
+  if (!principalId) {
+    redirect("/admin/login");
+  }
 
-  if (!(await hasAdminSession(user.id))) {
+  if (!(await hasAdminSession(principalId))) {
     redirect("/admin/login");
   }
 

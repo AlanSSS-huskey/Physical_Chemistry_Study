@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, getGoogleOAuthConfig } from "@/lib/auth";
 import { hasAdminSession, isAdminPasswordConfigured } from "@/lib/admin";
 import { loginAdmin } from "@/app/admin/login/actions";
 
@@ -11,16 +11,22 @@ type Props = {
 function getErrorMessage(error?: string): string | null {
   if (error === "invalid") return "密码错误，请重试。";
   if (error === "config") return "管理员密码未配置，请先在 .env 设置 ADMIN_PAGE_PASSWORD。";
+  if (error === "auth") return "认证状态异常，请重试。";
   return null;
 }
 
 export default async function AdminLoginPage({ searchParams }: Props) {
+  const authConfigured = getGoogleOAuthConfig().configured;
   const user = await getCurrentUser();
-  if (!user) {
+  if (authConfigured && !user) {
     redirect("/api/auth/signin?callbackUrl=/admin/login");
   }
+  const principalId = authConfigured ? user?.id : "password-only-admin";
+  if (!principalId) {
+    redirect("/admin/login?error=auth");
+  }
 
-  if (await hasAdminSession(user.id)) {
+  if (await hasAdminSession(principalId)) {
     redirect("/admin");
   }
 
@@ -34,7 +40,9 @@ export default async function AdminLoginPage({ searchParams }: Props) {
         <div className="border-b border-slate-700 bg-gradient-to-r from-amber-600 to-amber-500 p-8 text-white">
           <h1 className="text-2xl font-black tracking-tight">Admin Access</h1>
           <p className="mt-1 text-sm text-amber-100">
-            当前账号：{user.email ?? user.name ?? user.id}
+            {authConfigured
+              ? `当前账号：${user?.email ?? user?.name ?? user?.id}`
+              : "当前模式：仅密码登录（Google 登录已禁用）"}
           </p>
         </div>
 
