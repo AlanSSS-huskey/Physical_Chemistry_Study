@@ -1,5 +1,12 @@
 import NextAuth from "next-auth";
+import type { NextRequest } from "next/server";
 import { getAuthOptions, getGoogleOAuthConfig, isDatabaseConfigured } from "@/lib/auth";
+
+type AuthRouteContext = {
+  params: {
+    nextauth: string[];
+  };
+};
 
 function missingConfigResponse() {
   const authSecretConfigured = Boolean(process.env.NEXTAUTH_SECRET ?? process.env.AUTH_SECRET);
@@ -50,22 +57,22 @@ function ensureAuthConfigured() {
   return true;
 }
 
-export async function GET(req: Request) {
+export async function GET(req: Request, context: AuthRouteContext) {
   if (!ensureAuthConfigured()) return missingConfigResponse();
   try {
     const nextAuthHandler = NextAuth(getAuthOptions());
-    return await nextAuthHandler(req);
+    return await nextAuthHandler(req as NextRequest, context);
   } catch (error) {
     console.error("Auth GET route failed:", error);
     return new Response(formatAuthError("Auth route internal error.", error), { status: 500 });
   }
 }
 
-export async function POST(req: Request) {
+export async function POST(req: Request, context: AuthRouteContext) {
   if (!ensureAuthConfigured()) return missingConfigResponse();
   try {
     const nextAuthHandler = NextAuth(getAuthOptions());
-    return await nextAuthHandler(req);
+    return await nextAuthHandler(req as NextRequest, context);
   } catch (error) {
     console.error("Auth POST route failed:", error);
     return new Response(formatAuthError("Auth route internal error.", error), { status: 500 });
