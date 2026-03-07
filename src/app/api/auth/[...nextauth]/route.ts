@@ -16,26 +16,43 @@ function missingConfigResponse() {
         : "- DATABASE_URL is optional (JWT session fallback is used when missing)",
       authSecretConfigured
         ? "- NEXTAUTH_SECRET is configured"
-        : "- NEXTAUTH_SECRET (or AUTH_SECRET) is strongly recommended",
+        : "- NEXTAUTH_SECRET (or AUTH_SECRET) is required in production",
       "- NEXTAUTH_URL"
     ].join("\n"),
     { status: 500 }
   );
 }
 
-const nextAuthHandler = NextAuth(getAuthOptions());
+function isSecretConfigured() {
+  return Boolean(process.env.NEXTAUTH_SECRET ?? process.env.AUTH_SECRET);
+}
 
 function ensureAuthConfigured() {
   const google = getGoogleOAuthConfig();
-  return google.configured;
+  const requireSecret = process.env.NODE_ENV === "production";
+  if (!google.configured) return false;
+  if (requireSecret && !isSecretConfigured()) return false;
+  return true;
 }
 
 export async function GET(req: Request) {
   if (!ensureAuthConfigured()) return missingConfigResponse();
-  return nextAuthHandler(req);
+  try {
+    const nextAuthHandler = NextAuth(getAuthOptions());
+    return nextAuthHandler(req);
+  } catch (error) {
+    console.error("Auth GET route failed:", error);
+    return new Response("Auth route internal error.", { status: 500 });
+  }
 }
 
 export async function POST(req: Request) {
   if (!ensureAuthConfigured()) return missingConfigResponse();
-  return nextAuthHandler(req);
+  try {
+    const nextAuthHandler = NextAuth(getAuthOptions());
+    return nextAuthHandler(req);
+  } catch (error) {
+    console.error("Auth POST route failed:", error);
+    return new Response("Auth route internal error.", { status: 500 });
+  }
 }
