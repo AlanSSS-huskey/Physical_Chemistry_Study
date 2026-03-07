@@ -27,6 +27,21 @@ function isSecretConfigured() {
   return Boolean(process.env.NEXTAUTH_SECRET ?? process.env.AUTH_SECRET);
 }
 
+function shouldExposeDebugDetails() {
+  return process.env.VERCEL_ENV === "preview" || process.env.NODE_ENV !== "production";
+}
+
+function formatAuthError(prefix: string, error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error);
+  const stack = error instanceof Error ? error.stack ?? "" : "";
+  if (!shouldExposeDebugDetails()) {
+    return `${prefix} (see server logs).`;
+  }
+  return [prefix, `message: ${message}`, stack ? `stack:\n${stack}` : ""]
+    .filter(Boolean)
+    .join("\n\n");
+}
+
 function ensureAuthConfigured() {
   const google = getGoogleOAuthConfig();
   const requireSecret = process.env.NODE_ENV === "production";
@@ -42,7 +57,7 @@ export async function GET(req: Request) {
     return await nextAuthHandler(req);
   } catch (error) {
     console.error("Auth GET route failed:", error);
-    return new Response("Auth route internal error.", { status: 500 });
+    return new Response(formatAuthError("Auth route internal error.", error), { status: 500 });
   }
 }
 
@@ -53,6 +68,6 @@ export async function POST(req: Request) {
     return await nextAuthHandler(req);
   } catch (error) {
     console.error("Auth POST route failed:", error);
-    return new Response("Auth route internal error.", { status: 500 });
+    return new Response(formatAuthError("Auth route internal error.", error), { status: 500 });
   }
 }
