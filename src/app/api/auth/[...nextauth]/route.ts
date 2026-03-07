@@ -39,7 +39,7 @@ export async function GET(req: Request) {
   if (!ensureAuthConfigured()) return missingConfigResponse();
   try {
     const nextAuthHandler = NextAuth(getAuthOptions());
-    return nextAuthHandler(req);
+    return await nextAuthHandler(req);
   } catch (error) {
     console.error("Auth GET route failed:", error);
     return new Response("Auth route internal error.", { status: 500 });
@@ -50,7 +50,7 @@ export async function POST(req: Request) {
   if (!ensureAuthConfigured()) return missingConfigResponse();
   try {
     const nextAuthHandler = NextAuth(getAuthOptions());
-    return nextAuthHandler(req);
+    return await nextAuthHandler(req);
   } catch (error) {
     console.error("Auth POST route failed:", error);
     return new Response("Auth route internal error.", { status: 500 });
