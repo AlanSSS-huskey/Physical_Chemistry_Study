@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { MDXRemote } from "next-mdx-remote";
+import type { MDXRemoteSerializeResult } from "next-mdx-remote";
 
 type Props = {
   contentId?: string;
@@ -14,7 +15,7 @@ type Props = {
 };
 
 type PreviewResponse = {
-  mdx: Record<string, unknown>;
+  mdx: MDXRemoteSerializeResult<Record<string, unknown>>;
 };
 
 function slugify(input: string): string {
@@ -276,7 +277,7 @@ export function AdminContentEditor({
               </div>
             ) : preview ? (
               <div className="prose prose-slate max-w-none text-slate-700">
-                <MDXRemote {...(preview as any)} />
+                <MDXRemote {...preview} />
               </div>
             ) : (
               <div className="text-sm text-slate-500">渲染中...</div>
