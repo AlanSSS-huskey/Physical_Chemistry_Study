@@ -20,6 +20,14 @@ const poolRef = database?.username.match(/^postgres\.([a-z0-9]+)$/)?.[1];
 const projectRef = directRef || poolRef || null;
 const expectedRef = process.env.EXPECTED_SUPABASE_PROJECT_REF?.trim();
 const targetMatches = !expectedRef || projectRef === expectedRef;
+let storageProjectRef = null;
+try {
+  const storageUrl = new URL(process.env.SUPABASE_URL || "");
+  storageProjectRef =
+    storageUrl.hostname.match(/^([a-z0-9]+)\.supabase\.co$/)?.[1] || null;
+} catch {
+  // Missing or malformed URLs are reported without exposing configuration values.
+}
 const required = [
   "User",
   "Account",
@@ -57,6 +65,7 @@ console.log(
       },
       storage: {
         urlConfigured: Boolean(process.env.SUPABASE_URL),
+        projectRef: storageProjectRef,
         serverKeyConfigured: Boolean(
           process.env.SUPABASE_SECRET_KEY ||
           process.env.SUPABASE_SERVICE_ROLE_KEY,

@@ -7,6 +7,7 @@ import { AdminDeleteButton } from "@/components/AdminDeleteButton";
 import { useLocale } from "@/components/LocaleProvider";
 import { formatDate, textFor } from "@/lib/i18n";
 import { adminErrorMessage, readApiObject, imageMarkdown } from "@/lib/editor";
+import uploadLimits from "@/lib/upload-limits.json";
 
 type ImageItem = {
   id: string;
@@ -44,8 +45,8 @@ export function AdminImageManager({ items }: { items: ImageItem[] }) {
       );
       return;
     }
-    if (file.size > 5 * 1024 * 1024) {
-      setError(t("图片不能超过 5 MB。", "Images must be 5 MB or smaller."));
+    if (file.size > uploadLimits.maxImageBytes) {
+      setError(t("图片不能超过 4 MiB。", "Images must be 4 MiB or smaller."));
       return;
     }
     uploadingRef.current = true;
@@ -131,8 +132,8 @@ export function AdminImageManager({ items }: { items: ImageItem[] }) {
           </h2>
           <p className="muted mt-1 text-sm">
             {t(
-              "拖放到此处，或选择文件。支持 PNG、JPG 和 WebP，最大 5 MB。上传后的图片链接可公开分享。",
-              "Drop a file here or browse. PNG, JPG, and WebP; up to 5 MB. Uploaded image links can be shared publicly.",
+              "拖放到此处，或选择文件。支持 PNG、JPG 和 WebP，最大 4 MiB。上传后的图片链接可公开分享。",
+              "Drop a file here or browse. PNG, JPG, and WebP; up to 4 MiB. Uploaded image links can be shared publicly.",
             )}
           </p>
         </div>

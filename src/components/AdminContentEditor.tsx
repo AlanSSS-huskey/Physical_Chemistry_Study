@@ -9,6 +9,7 @@ import {
   type ArticleMetadataValues,
 } from "@/components/admin/ArticleMetadataFields";
 import { textFor } from "@/lib/i18n";
+import uploadLimits from "@/lib/upload-limits.json";
 import {
   adminErrorMessage,
   canonicalTranslation,
@@ -255,8 +256,8 @@ export function AdminContentEditor({
       );
       return;
     }
-    if (file.size > 5 * 1024 * 1024) {
-      setError(t("图片不能超过 5 MB。", "Images must be 5 MB or smaller."));
+    if (file.size > uploadLimits.maxImageBytes) {
+      setError(t("图片不能超过 4 MiB。", "Images must be 4 MiB or smaller."));
       return;
     }
     const targetLocale = editingLocaleRef.current;

@@ -1,9 +1,12 @@
 import { randomUUID } from "node:crypto";
+import uploadLimits from "./upload-limits.json" with { type: "json" };
 
 if (typeof window !== "undefined")
   throw new Error("Storage credentials are server-only");
 
-export const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
+export const MAX_IMAGE_SIZE = uploadLimits.maxImageBytes;
+export const MAX_IMAGE_REQUEST_SIZE =
+  MAX_IMAGE_SIZE + uploadLimits.multipartOverheadBytes;
 export type StorageConfig = { url: string; key: string; bucket: string };
 type Fetcher = (url: string, init: RequestInit) => Promise<Response>;
 export type ImageUpload = {
@@ -25,7 +28,7 @@ export class StorageError extends Error {
 }
 
 export async function readImageFormData(request: Request): Promise<FormData> {
-  const limit = MAX_IMAGE_SIZE + 65_536;
+  const limit = MAX_IMAGE_REQUEST_SIZE;
   const reader = request.body?.getReader();
   if (!reader) throw new StorageError("No image was uploaded");
   const parts: Uint8Array[] = [];
@@ -37,7 +40,7 @@ export async function readImageFormData(request: Request): Promise<FormData> {
       length += value.byteLength;
       if (length > limit) {
         await reader.cancel();
-        throw new StorageError("Image exceeds the 5 MB limit", 413);
+        throw new StorageError("Image exceeds the 4 MiB upload limit", 413);
       }
       parts.push(value);
     }
@@ -64,7 +67,7 @@ export function validateImage(
 ): { extension: string } {
   if (bytes.length === 0) throw new StorageError("Image is empty");
   if (bytes.length > MAX_IMAGE_SIZE)
-    throw new StorageError("Image exceeds the 5 MB limit", 413);
+    throw new StorageError("Image exceeds the 4 MiB limit", 413);
   const png = [137, 80, 78, 71, 13, 10, 26, 10];
   const matchesPng =
     bytes.length >= 24 &&

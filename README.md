@@ -2,7 +2,7 @@
 
 中英文物理化学学习网站。使用 Next.js 15、React 19、Prisma 6、NextAuth 4 与 Supabase Postgres / Storage。
 
-本轮重构的本地验收已完成：87 项行为测试、lint、类型检查、生产构建、格式检查及隔离数据库 HTTP 集成均通过。普通 Chrome 的真实 Google 授权、首次账号创建及刷新后保持会话也已验证；已登录管理员操作、真实 Storage 和 Production 环境仍待验证。本轮尚未对既有应用 schema 执行迁移，也未部署本次改动。详见[验收记录](docs/verification/2026-10-28-site-refactor.md)。
+本轮重构及 Remember Me 的本地验收已完成：104 项行为测试、lint、类型检查、生产构建、格式检查及隔离数据库 HTTP 集成均通过。普通 Chrome 的真实 Google 授权、首次账号创建及刷新后保持会话也已验证。新版已通过 Vercel Preview 构建，正式数据库初始化与上线尚待完成。详见[登录与发布记录](docs/verification/2026-10-28-login-release.md)。
 
 ## 当前实现
 
@@ -42,18 +42,18 @@ CHEMISTRY_CONTENT_MODE=bundled DISABLE_GOOGLE_LOGIN=true npm run dev
 
 模板全部使用空值或占位符，不包含真实数据库地址、密码或 API key。历史版本曾包含具体连接凭据；若那些凭据仍有效，应在所属服务中轮换。
 
-| 环境变量                                    | 用途                                                                          |
-| ------------------------------------------- | ----------------------------------------------------------------------------- |
-| `DATABASE_URL`                              | 已确认的 PostgreSQL 连接串；既有应用保留 `postgrese` 数据库的 `public` schema |
-| `EXPECTED_SUPABASE_PROJECT_REF`             | 配置检查时要求匹配的项目 ref，可选                                            |
-| `NEXTAUTH_URL`                              | 当前环境的网站 origin，例如本地地址或正式域名                                 |
-| `NEXTAUTH_SECRET`                           | 足够随机的会话密钥                                                            |
-| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Google OAuth 应用                                                             |
-| `DISABLE_GOOGLE_LOGIN`                      | `true` 时停用登录                                                             |
-| `SUPABASE_URL`                              | 同一 Supabase 项目的 HTTPS 地址                                               |
-| `SUPABASE_SECRET_KEY`                       | 仅服务端使用的 Supabase secret key                                            |
-| `SUPABASE_SERVICE_ROLE_KEY`                 | 兼容旧 service-role key；与 secret key 二选一                                 |
-| `SUPABASE_STORAGE_BUCKET`                   | 现有的私有 bucket，默认 `chemistry-images`                                    |
+| 环境变量                                    | 用途                                                                                                          |
+| ------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| `DATABASE_URL`                              | 已确认的 PostgreSQL 连接串；Vercel 实际目标为 `postgres/public`，本地开发为 `postgrese/chemistry_development` |
+| `EXPECTED_SUPABASE_PROJECT_REF`             | 配置检查时要求匹配的项目 ref，可选                                                                            |
+| `NEXTAUTH_URL`                              | 当前环境的网站 origin，例如本地地址或正式域名                                                                 |
+| `NEXTAUTH_SECRET`                           | 足够随机的会话密钥                                                                                            |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Google OAuth 应用                                                                                             |
+| `DISABLE_GOOGLE_LOGIN`                      | `true` 时停用登录                                                                                             |
+| `SUPABASE_URL`                              | 同一 Supabase 项目的 HTTPS 地址                                                                               |
+| `SUPABASE_SECRET_KEY`                       | 仅服务端使用的 Supabase secret key                                                                            |
+| `SUPABASE_SERVICE_ROLE_KEY`                 | 兼容旧 service-role key；与 secret key 二选一                                                                 |
+| `SUPABASE_STORAGE_BUCKET`                   | 现有的私有 bucket，默认 `chemistry-images`                                                                    |
 
 Google OAuth 的授权回调必须包含 `https://YOUR_DOMAIN/api/auth/callback/google`；开发环境单独添加 `http://localhost:3000/api/auth/callback/google`。登录服务未配置、会话失效和数据库不可用是不同状态。
 
@@ -70,14 +70,14 @@ npm run config:check -- --database
 
 ## 数据库部署
 
-本地、Preview 与 Production 的连接变量分别管理。2026-10-28 的只读核对已确认：既有应用位于真实存在的 `postgrese` 数据库、`public` schema，不能把数据库名自动改为 `postgres`。其迁移历史仅包含 `20260303054114_init`；当时 `User`、`Content`、`Progress` 的聚合行数均为 0。默认 `postgres` 数据库中的 `planner` schema 属于另一个应用，与上述应用目标不同。
+2026-10-28 的实际云端构建日志确认，Vercel 的 `DATABASE_URL` 指向项目 `xnegjifescpfenmzlsgv` 的 `postgres/public`；Dashboard 显示该变量适用于 All Environments。它与本地原 `.env` 的 `postgrese/public` 不同，不能从本地配置推断线上目标。
 
-Vercel Production 环境变量读取仍返回 403，线上实际连接尚未验证；不能据此认定 Production 一定使用本地目标。旧模板中的其他项目地址也不能作为部署依据。本次计划保留 `postgrese/public`，不把既有应用迁入新建的 `chemistry` schema。
+正式目标 `postgres/public` 初始化前没有应用表、枚举或迁移记录，只有两个原有 planner 函数；`planner` schema 属于另一个应用。原 `postgrese/public` 具有初始化迁移和空应用表，本次保留；真实开发账户位于 `postgrese/chemistry_development`，也不复制或修改。
 
-1. 在 Vercel 确认正确团队、项目，以及 Production 的 `DATABASE_URL`；在 Supabase 确认相同项目 ref、数据库名和 schema。
-2. 保留既有 `postgrese/public` 的表、账号、权限和链接；不改动默认 `postgres` 数据库的 `planner` 或 Supabase 管理的 schema。不要运行 reset。
-3. 对已有应用数据先备份并检查迁移历史；既有后台编辑器迁移 `20260307120000_admin_content_editor` 与本轮迁移 `20261028110000_bilingual_content_and_durable_images` 尚未应用到此应用目标。三条迁移及读写流程已在隔离测试 schema 通过验证，但不能代替对既有应用目标的迁移审阅。
-4. 以下为核对连接、备份并审阅迁移后的发布步骤，当前尚未在既有应用目标执行：
+1. 每次发布核对正确团队、项目，以及实际 `DATABASE_URL` 的项目 ref、数据库名和 schema。
+2. 保留两个原有 public 函数、`planner` schema、`postgrese` 数据区和 Supabase 管理的 schema；不要运行 reset。
+3. 原目标与正式目标已分别建立私人备份，保存无关数据、函数和权限的内容指纹。三条迁移及读写流程已在隔离测试 schema 通过验证。
+4. 正式初始化脚本会先验证目标与保护基线，再执行以下步骤；自动审批要求用户明确确认生产数据写入，当前尚未执行：
 
 ```sh
 npm run prisma:generate
@@ -94,7 +94,7 @@ npm run db:seed
 
 ## 图片
 
-先在同一 Supabase 项目创建私有 bucket `chemistry-images`，然后设置服务端 Storage 凭据。上传仅允许管理员，检查图片签名和 5 MB 限制。数据库记录失败会补偿删除刚上传的对象。
+同一 Supabase 项目已创建私有 bucket `chemistry-images`，限制 4 MiB 和 PNG/JPEG/WebP。Vercel Production 已有服务端 Storage 环境变量，仍须验证实际项目匹配和应用读写。上传仅允许管理员，并检查图片签名。数据库记录失败会补偿删除刚上传的对象。
 
 上传 URL 为 `/api/images/<id>`，可公开分享；私有 bucket 不代表这些应用链接私密。不要上传私密资料。旧 `/uploads/...` 文件若还可取回，需要单独迁移；新实现不会在部署文件系统写入图片，也不会声称已恢复不存在的旧文件。
 
@@ -111,7 +111,7 @@ npm run format:check
 npm audit
 ```
 
-最终冻结源码的检查结果为：原生行为测试 87/87 通过，ESLint 和 TypeScript 均为 0 错误，生产构建及格式检查通过，`npm audit` 为 0 漏洞。基线没有测试或类型检查脚本，且使用已弃用的 `next lint`；本轮分别增加 Node 原生测试、无增量缓存的类型检查，并改用 ESLint CLI。
+最终源码的检查结果为：原生行为测试 104/104 通过，ESLint 和 TypeScript 均为 0 错误，生产构建及格式检查通过；依赖未再变动，已有 `npm audit` 为 0 漏洞。上传上限修正覆盖 4 MiB 精确边界和多一个字节被拒绝的情况。基线没有测试或类型检查脚本，且使用已弃用的 `next lint`；本轮分别增加 Node 原生测试、无增量缓存的类型检查，并改用 ESLint CLI。
 
 真实数据库的隔离 schema 已通过 13 组 HTTP 集成：数据库会话、管理员 CRUD、双语及编码 slug、拒绝越权写入、无效载荷与跨源保护、进度幂等及账户记录、草稿与私有内容保护、安全预览、Storage 缺配失败和内置内容改名/删除保护。测试 schema 应用了全部三条迁移，14 张应用表启用 RLS；测试记录清空后 schema 已删除，既有 `public` 的 `User` / `Content` / `Progress` 仍为 0 / 0 / 0，迁移历史仍仅包含初始化。
 

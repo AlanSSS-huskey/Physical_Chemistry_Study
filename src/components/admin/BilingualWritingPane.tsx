@@ -187,8 +187,8 @@ export function BilingualWritingPane({
           </div>
           <p id="body-help" className="text-xs leading-5 muted">
             {t(
-              "支持 Markdown、LaTeX 公式、拖放图片与粘贴截图。PNG、JPG 或 WebP，每张不超过 5 MB。上传后的图片链接可公开分享。",
-              "Markdown, LaTeX, image drops, and pasted screenshots. PNG, JPG, or WebP; up to 5 MB each. Uploaded image links can be shared publicly.",
+              "支持 Markdown、LaTeX 公式、拖放图片与粘贴截图。PNG、JPG 或 WebP，每张不超过 4 MiB。上传后的图片链接可公开分享。",
+              "Markdown, LaTeX, image drops, and pasted screenshots. PNG, JPG, or WebP; up to 4 MiB each. Uploaded image links can be shared publicly.",
             )}
           </p>
         </div>

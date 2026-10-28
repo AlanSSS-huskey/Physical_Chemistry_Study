@@ -7,6 +7,8 @@ import {
   uploadImageObject,
   deleteImageObject,
   uploadAndPersistImage,
+  MAX_IMAGE_SIZE,
+  MAX_IMAGE_REQUEST_SIZE,
 } from "../src/lib/storage.ts";
 const png = Uint8Array.from([
   137, 80, 78, 71, 13, 10, 26, 10, 0, 0, 0, 13, 73, 72, 68, 82, 0, 0, 0, 1, 0,
@@ -25,7 +27,7 @@ test("images require matching binary signatures and nonzero bounded size", () =>
     StorageError,
   );
   assert.throws(
-    () => validateImage(new Uint8Array(5 * 1024 * 1024 + 1), "image/png"),
+    () => validateImage(new Uint8Array(4 * 1024 * 1024 + 1), "image/png"),
     StorageError,
   );
   assert.throws(
@@ -35,6 +37,23 @@ test("images require matching binary signatures and nonzero bounded size", () =>
         "image/svg+xml",
       ),
     StorageError,
+  );
+});
+test("image limit accepts exactly 4 MiB and rejects one additional byte", () => {
+  assert.equal(MAX_IMAGE_SIZE, 4 * 1024 * 1024);
+  assert.equal(MAX_IMAGE_REQUEST_SIZE, MAX_IMAGE_SIZE + 65_536);
+  assert.ok(
+    MAX_IMAGE_REQUEST_SIZE < 4_500_000,
+    "multipart guard stays within the hosting request-body limit",
+  );
+  const exact = new Uint8Array(4 * 1024 * 1024);
+  exact.set(png);
+  assert.equal(validateImage(exact, "image/png").extension, "png");
+  const oversized = new Uint8Array(exact.length + 1);
+  oversized.set(png);
+  assert.throws(
+    () => validateImage(oversized, "image/png"),
+    (error) => error instanceof StorageError && error.status === 413,
   );
 });
 test("storage requires server credentials and validates configuration", () => {
@@ -122,7 +141,7 @@ test("multipart image reads enforce a streaming limit without content-length", a
   const { readImageFormData } = await import("../src/lib/storage.ts");
   const request = new Request("https://study.example/api/upload-image", {
     method: "POST",
-    body: new Uint8Array(5 * 1024 * 1024 + 65_537),
+    body: new Uint8Array(4 * 1024 * 1024 + 65_537),
     headers: { "content-type": "multipart/form-data; boundary=x" },
   });
   await assert.rejects(
@@ -138,6 +157,55 @@ test("multipart image reads enforce a streaming limit without content-length", a
     }),
   );
   assert.equal(parsed.get("file").size, png.length);
+});
+test("a 4 MiB image fits the multipart envelope while an oversized envelope is rejected", async () => {
+  const { readImageFormData } = await import("../src/lib/storage.ts");
+  const exact = new Uint8Array(4 * 1024 * 1024);
+  exact.set(png);
+  const form = new FormData();
+  form.set("file", new File([exact], "a.png", { type: "image/png" }));
+  const parsed = await readImageFormData(
+    new Request("https://study.example/api/upload-image", {
+      method: "POST",
+      body: form,
+    }),
+  );
+  assert.equal(parsed.get("file").size, exact.length);
+  const boundary = "upload-limit-boundary";
+  const prefix = new TextEncoder().encode(
+    `--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="a.png"\r\nContent-Type: image/png\r\n\r\n`,
+  );
+  const suffix = new TextEncoder().encode(`\r\n--${boundary}--\r\n`);
+  const envelope = new Uint8Array(4 * 1024 * 1024 + 65_536);
+  envelope.set(prefix);
+  envelope.set(suffix, envelope.length - suffix.length);
+  const headers = {
+    "Content-Type": `multipart/form-data; boundary=${boundary}`,
+  };
+  const atCap = await readImageFormData(
+    new Request("https://study.example/api/upload-image", {
+      method: "POST",
+      body: envelope,
+      headers,
+    }),
+  );
+  assert.equal(
+    atCap.get("file").size,
+    envelope.length - prefix.length - suffix.length,
+  );
+  const tooLarge = new Uint8Array(envelope.length + 1);
+  tooLarge.set(envelope);
+  await assert.rejects(
+    () =>
+      readImageFormData(
+        new Request("https://study.example/api/upload-image", {
+          method: "POST",
+          body: tooLarge,
+          headers,
+        }),
+      ),
+    (error) => error instanceof StorageError && error.status === 413,
+  );
 });
 test("successful persistence uses a stable app URL rather than requiring a public bucket", async () => {
   const saved = await uploadAndPersistImage(
