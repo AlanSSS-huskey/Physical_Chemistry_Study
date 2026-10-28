@@ -3,10 +3,21 @@ import type { NextRequest } from "next/server";
 import {
   getAuthAvailability,
   getAuthOptions,
+  getAuthSecret,
   logAuthFailure,
   trackAuthOperation,
 } from "@/lib/auth";
 import { hasSessionCookie } from "@/lib/auth-config";
+import {
+  applySessionCookiePolicy,
+  googleOAuthState,
+  loginPreferenceCookieName,
+  readLoginPreference,
+  readRequestedRemember,
+  signLoginPreference,
+  withLoginPreferenceCookie,
+  type ObservedSession,
+} from "@/lib/session-policy";
 
 type AuthRouteContext = { params: Promise<{ nextauth: string[] }> };
 
@@ -30,6 +41,15 @@ async function handleAuth(
   context: AuthRouteContext,
 ): Promise<Response> {
   const params = await context.params;
+  const isCallback = params.nextauth[0] === "callback";
+  const isSignIn =
+    req.method === "POST" &&
+    params.nextauth[0] === "signin" &&
+    params.nextauth[1] === "google";
+  const secureCookies =
+    new URL(process.env.NEXTAUTH_URL || req.url).protocol === "https:";
+  const clearPreference = (response: Response) =>
+    withLoginPreferenceCookie(response, "", secureCookies);
   const configured = getAuthAvailability().status === "ready";
   if (!configured) {
     // SessionProvider can mount on public pages before authentication is set up.
@@ -48,22 +68,56 @@ async function handleAuth(
     ) {
       return Response.json({}, { headers: { "Cache-Control": "no-store" } });
     }
-    return unavailable("unconfigured");
+    const response = unavailable("unconfigured");
+    return isCallback ? clearPreference(response) : response;
   }
   try {
+    const requestedRemember = isSignIn
+      ? await readRequestedRemember(req)
+      : false;
+    const remember =
+      isCallback &&
+      readLoginPreference(
+        req.cookies.get(loginPreferenceCookieName(secureCookies))?.value,
+        req.nextUrl.searchParams.get("state") ?? "",
+        getAuthSecret(),
+      );
+    let observedSession: ObservedSession | undefined;
     const { result: response, failed } = await trackAuthOperation<Response>(
-      () => NextAuth(getAuthOptions())(req, { params }),
+      () =>
+        NextAuth(
+          getAuthOptions({
+            remember,
+            observe(session) {
+              observedSession = session;
+            },
+          }),
+        )(req, { params }),
     );
-    if (failed && req.method === "GET" && params.nextauth[0] === "callback") {
-      return Response.redirect(
-        new URL("/login?error=unavailable", req.url),
-        303,
+    if (failed && req.method === "GET" && isCallback) {
+      return clearPreference(
+        Response.redirect(new URL("/login?error=unavailable", req.url), 303),
       );
     }
-    return failed ? unavailable("unavailable") : response;
+    if (failed) return unavailable("unavailable");
+    let result = applySessionCookiePolicy(response, observedSession);
+    if (isCallback || params.nextauth[0] === "signout")
+      result = clearPreference(result);
+    if (isSignIn) {
+      const state = await googleOAuthState(result);
+      result = withLoginPreferenceCookie(
+        result,
+        state
+          ? signLoginPreference(requestedRemember, state, getAuthSecret())
+          : "",
+        secureCookies,
+      );
+    }
+    return result;
   } catch (error) {
     logAuthFailure("AUTH_ROUTE", error);
-    return unavailable("unavailable");
+    const response = unavailable("unavailable");
+    return isCallback ? clearPreference(response) : response;
   }
 }
 

@@ -16,12 +16,16 @@ export function GoogleSignInButton({
   const { locale } = useLocale();
   const [pending, setPending] = useState(false);
   const [failed, setFailed] = useState(false);
+  const [rememberMe, setRememberMe] = useState(true);
 
   async function login() {
     setPending(true);
     setFailed(false);
     try {
-      await signIn("google", { callbackUrl: safeCallbackPath(callbackUrl) });
+      await signIn("google", {
+        callbackUrl: safeCallbackPath(callbackUrl),
+        remember: rememberMe ? "true" : "false",
+      });
     } catch {
       setFailed(true);
     } finally {
@@ -31,6 +35,31 @@ export function GoogleSignInButton({
 
   return (
     <div className="space-y-3">
+      <label className="flex cursor-pointer items-center gap-3 text-sm">
+        <input
+          type="checkbox"
+          className="h-4 w-4 accent-[var(--accent)]"
+          checked={rememberMe}
+          onChange={(event) => setRememberMe(event.target.checked)}
+          disabled={pending}
+        />
+        <span>
+          {textFor(locale, "记住我（30 天）", "Remember me for 30 days")}
+        </span>
+      </label>
+      <p className="muted text-sm">
+        {rememberMe
+          ? textFor(
+              locale,
+              "在此设备保留登录状态，30 天后重新验证。请勿在共用设备上勾选。",
+              "Stay signed in on this device for 30 days. Leave this unchecked on shared devices.",
+            )
+          : textFor(
+              locale,
+              "仅保留当前浏览器会话，最长 12 小时。",
+              "Stay signed in for this browser session, for up to 12 hours.",
+            )}
+      </p>
       <button
         className="button"
         type="button"

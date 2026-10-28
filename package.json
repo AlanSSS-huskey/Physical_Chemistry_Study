@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "next dev",
     "postinstall": "prisma generate",
+    "prebuild": "node scripts/check-config.mjs",
     "build": "next build",
     "start": "next start",
     "lint": "eslint src tests --max-warnings=0",

@@ -13,6 +13,12 @@ import {
   hasValidDatabaseUrl,
   resolveDatabaseSession,
 } from "@/lib/auth-config";
+import {
+  createSessionPolicyAdapter,
+  createSessionToken,
+  REMEMBERED_SESSION_SECONDS,
+  type ObservedSession,
+} from "@/lib/session-policy";
 
 export { AuthenticationUnavailableError } from "@/lib/auth-config";
 
@@ -77,11 +83,21 @@ export function logAuthFailure(context: string, error?: unknown) {
   });
 }
 
-export function getAuthOptions(): NextAuthOptions {
+export function getAuthOptions(policy?: {
+  remember: boolean;
+  observe?: (session: ObservedSession) => void;
+}): NextAuthOptions {
   const google = getGoogleOAuthConfig();
   return {
-    adapter: PrismaAdapter(prisma),
-    session: { strategy: "database" },
+    adapter: createSessionPolicyAdapter(PrismaAdapter(prisma), {
+      observe: policy?.observe,
+    }),
+    session: {
+      strategy: "database",
+      maxAge: REMEMBERED_SESSION_SECONDS,
+      updateAge: REMEMBERED_SESSION_SECONDS,
+      generateSessionToken: () => createSessionToken(policy?.remember === true),
+    },
     providers: google.configured
       ? [
           GoogleProvider({

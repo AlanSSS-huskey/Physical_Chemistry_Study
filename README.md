@@ -57,6 +57,10 @@ CHEMISTRY_CONTENT_MODE=bundled DISABLE_GOOGLE_LOGIN=true npm run dev
 
 Google OAuth 的授权回调必须包含 `https://YOUR_DOMAIN/api/auth/callback/google`；开发环境单独添加 `http://localhost:3000/api/auth/callback/google`。登录服务未配置、会话失效和数据库不可用是不同状态。
 
+登录页默认勾选“记住我（30 天）”。勾选后，会话从成功登录起固定有效 30 天；不勾选则使用浏览器会话 Cookie，服务端最多保留 12 小时。访问网站不会把期限无限向后延长。过期或主动退出后需重新登录，退出立即撤销对应数据库会话。浏览器的“恢复上次会话”功能可能恢复会话 Cookie，因此关闭窗口本身不作为服务端撤销凭据的保证。
+
+Google 记住登录偏好只由通过 CSRF 校验的登录请求生成签名，绑定该次 OAuth state，并在回调或退出时清除。旧会话保留原有数据库期限。构建会先运行配置检查，只在构建日志记录非敏感的目标标识与配置状态。
+
 ```sh
 npm run config:check
 npm run config:check -- --database
