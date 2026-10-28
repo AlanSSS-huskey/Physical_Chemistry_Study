@@ -71,6 +71,13 @@ export function GoogleSignInButton({
           ? textFor(locale, "正在前往 Google…", "Opening Google…")
           : textFor(locale, "使用 Google 登录", "Continue with Google")}
       </button>
+      <p className="muted text-sm">
+        {textFor(
+          locale,
+          "若 Google 授权页一直加载，请在 Chrome 中打开本站，再发起登录。",
+          "If Google's authorization page keeps loading, open this site in Chrome and start sign-in there.",
+        )}
+      </p>
       {failed && (
         <p className="notice notice-error text-sm" role="alert">
           {textFor(

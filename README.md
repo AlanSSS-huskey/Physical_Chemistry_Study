@@ -2,7 +2,7 @@
 
 中英文物理化学学习网站。使用 Next.js 15、React 19、Prisma 6、NextAuth 4 与 Supabase Postgres / Storage。
 
-本轮重构及 Remember Me 的本地验收已完成：104 项行为测试、lint、类型检查、生产构建、格式检查及隔离数据库 HTTP 集成均通过。普通 Chrome 的真实 Google 授权、首次账号创建及刷新后保持会话也已验证。新版已通过 Vercel Preview 构建，正式数据库初始化与上线尚待完成。详见[登录与发布记录](docs/verification/2026-10-28-login-release.md)。
+新版已发布到[正式网站](https://physical-chemistry-study.vercel.app)。正式 Supabase 数据库已初始化，中英文课程、真实 Google 登录、30 天 Remember Me、12 小时浏览器会话、刷新保持及主动退出均已验证。104 项行为测试、lint、类型检查、生产构建和格式检查通过。详见[登录与发布记录](docs/verification/2026-10-28-login-release.md)。
 
 ## 当前实现
 
@@ -77,7 +77,7 @@ npm run config:check -- --database
 1. 每次发布核对正确团队、项目，以及实际 `DATABASE_URL` 的项目 ref、数据库名和 schema。
 2. 保留两个原有 public 函数、`planner` schema、`postgrese` 数据区和 Supabase 管理的 schema；不要运行 reset。
 3. 原目标与正式目标已分别建立私人备份，保存无关数据、函数和权限的内容指纹。三条迁移及读写流程已在隔离测试 schema 通过验证。
-4. 正式初始化脚本会先验证目标与保护基线，再执行以下步骤；自动审批要求用户明确确认生产数据写入，当前尚未执行：
+4. 用户明确确认后，正式初始化已完成三项应用迁移和两章双语课程导入；随后追加第四项迁移保护 Prisma 迁移记录。15 张表全部启用 RLS，无关数据和权限的前后校验一致。后续部署使用以下步骤：
 
 ```sh
 npm run prisma:generate
@@ -86,7 +86,7 @@ npm run config:check -- --database
 npm run db:seed
 ```
 
-新迁移为应用表添加双语 JSON、排序、发布状态以及图片对象路径。它仅启用应用表的 RLS，不授予匿名 Data API 访问；服务端连接角色必须拥有这些表或具备所需权限。
+迁移为应用表添加双语 JSON、排序、发布状态以及图片对象路径，并保护应用表和迁移记录的 RLS，不授予匿名 Data API 访问；服务端连接角色必须拥有这些表或具备所需权限。已以 `anon` 和 `authenticated` 角色验证迁移记录不可读取，Prisma 的所有者连接仍可正常迁移。
 
 `db:seed` 只添加不存在的双语入门课程，不覆盖已有文章、发布状态或权限。后台修改课程前先运行导入，之后数据库内容优先。若数据库中已管理某个内置课程，请在编辑器取消发布，不要删除覆盖记录使原样例重新出现。
 
@@ -94,11 +94,11 @@ npm run db:seed
 
 ## 图片
 
-同一 Supabase 项目已创建私有 bucket `chemistry-images`，限制 4 MiB 和 PNG/JPEG/WebP。Vercel Production 已有服务端 Storage 环境变量，仍须验证实际项目匹配和应用读写。上传仅允许管理员，并检查图片签名。数据库记录失败会补偿删除刚上传的对象。
+同一 Supabase 项目已创建私有 bucket `chemistry-images`，限制 4 MiB 和 PNG/JPEG/WebP。实际 Production 构建已确认 Storage 与数据库项目 ref 相同，服务端凭据已配置；真实应用上传仍待验证。上传仅允许管理员，并检查图片签名。数据库记录失败会补偿删除刚上传的对象。
 
 上传 URL 为 `/api/images/<id>`，可公开分享；私有 bucket 不代表这些应用链接私密。不要上传私密资料。旧 `/uploads/...` 文件若还可取回，需要单独迁移；新实现不会在部署文件系统写入图片，也不会声称已恢复不存在的旧文件。
 
-持久存储目前完成单元测试与缺少 Storage 配置时的失败路径验证；没有声称真实上传、读取或重新部署后的图片保留已通过验收。
+持久存储目前完成单元测试、缺配失败路径、Production 配置匹配、bucket 元数据及匿名上传被拒绝的验证。自动审批拒绝了使用临时生产账号、进度和图片的写入联调；该测试未执行，没有声称真实上传、读取或重新部署后的图片保留已通过验收。
 
 ## 检查与发布
 
@@ -115,9 +115,9 @@ npm audit
 
 真实数据库的隔离 schema 已通过 13 组 HTTP 集成：数据库会话、管理员 CRUD、双语及编码 slug、拒绝越权写入、无效载荷与跨源保护、进度幂等及账户记录、草稿与私有内容保护、安全预览、Storage 缺配失败和内置内容改名/删除保护。测试 schema 应用了全部三条迁移，14 张应用表启用 RLS；测试记录清空后 schema 已删除，既有 `public` 的 `User` / `Content` / `Progress` 仍为 0 / 0 / 0，迁移历史仍仅包含初始化。
 
-公开页面已在浏览器检查中英文搜索、切换后刷新、阅读与公式、旧链接，以及登录、账户和管理入口的安全状态；检查宽度为 320、768、1024 和 1440px。随后在普通 Chrome 完成真实 Google OAuth 与持久会话验证；已登录管理员的浏览器操作及真实 Storage 未验证。
+公开页面已在浏览器检查中英文搜索、切换后刷新、阅读与公式、旧链接，以及登录、账户和管理入口的安全状态；检查宽度为 320、768、1024 和 1440px。正式网站额外通过四组只读 HTTPS 检查，并在普通 Chrome 完成两种 Remember Me 选择的真实 Google 授权、刷新保持和主动退出；已登录管理员的浏览器操作及真实 Storage 未验证。
 
-本轮锁定 Next.js 15.5.28、NextAuth 4.24.15、Prisma 6.19.2、React 19.2.4 与 TypeScript 5.9.3；审计基线为 Next.js 15.5.12、NextAuth 4.24.13、Prisma 6.19.2。生产 Google 回调、Storage、生产数据库和 Vercel 环境仍需分别核验；本地登录成功不等于生产连接或发布完成。
+本轮锁定 Next.js 15.5.28、NextAuth 4.24.15、Prisma 6.19.2、React 19.2.4 与 TypeScript 5.9.3；审计基线为 Next.js 15.5.12、NextAuth 4.24.13、Prisma 6.19.2。Production 的数据库、Google 回调和实际发布已验证。内置浏览器的 Google passkey 卡顿尚未确认修复；登录页提供在 Chrome 重新发起登录的中英文提示，不跨浏览器搬运 OAuth state 或会话。
 
 保留旧链接 `/learn/<subject>/<chapter>` 与 `/notes/<slug>`；笔记使用 catch-all 路由兼容 slug 中的 `/` 和旧编码路径。
 
