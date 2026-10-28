@@ -8,7 +8,7 @@
 
 **Tech stack:** TypeScript, React 19, Tailwind 3, Node 24 native behavior tests, PostgreSQL and Supabase Storage.
 
-**Status (2026-10-28):** Local implementation and acceptance for tasks 1–6 are complete. Final frozen source passed 87/87 native tests, ESLint and TypeScript with 0 errors, production build, formatting, and npm audit with 0 vulnerabilities. Thirteen real-database HTTP groups and public browser checks passed. Task 7 remains pending: live OAuth, authenticated admin browser UI, live Storage, production configuration and release. No migration from this work has been applied to the existing application schema, and this refactor has not been deployed. See the [verification record](../verification/2026-10-28-site-refactor.md).
+**Status (2026-10-28):** Local implementation and acceptance for tasks 1–6 are complete. Final frozen source passed 87/87 native tests, ESLint and TypeScript with 0 errors, production build, formatting, and npm audit with 0 vulnerabilities. Thirteen real-database HTTP groups and public browser checks passed. Development Google OAuth and reload-persistent sessions are also verified in ordinary Chrome. Task 7 remains pending: production OAuth, authenticated admin browser UI, live Storage, production configuration and release. No migration from this work has been applied to the existing application schema, and this refactor has not been deployed. See the [verification record](../verification/2026-10-28-site-refactor.md).
 
 ## Verified database facts
 
@@ -38,7 +38,7 @@
   - Owner: backend agent. Produces `loadLibrary(locale)`, `loadContent(slug, locale)`, `resolveContentAccess(content, userId?)`; StudyContent and API payloads agreed in delegation.
   - Verify private/draft precedence over file fallbacks, invalid payloads, publication/translation rules, file signatures, and service failure states. Prepare additive SQL only.
 - [x] 3. Integrate authentication and idempotent progress updates. Display real saved progress on account pages.
-  - Status: local acceptance complete; real database sessions, access denial, repeated completion targets, shared-language progress and account records passed isolated HTTP verification. Live Google authorization remains task 7.
+  - Status: local acceptance complete; real database sessions, access denial, repeated completion targets, shared-language progress and account records passed isolated HTTP verification. Real Google authorization and session persistence after reload also passed in ordinary Chrome against the persistent development schema. Production OAuth remains task 7.
   - Owner: auth/progress agent. Produces `getSessionState()`, `getAuthAvailability()` and explicit completion target server action.
   - Verify malformed configuration, anonymous/unavailable distinction, real accessible chapter validation and stable shared content slug.
 - [x] 4. Rebuild bilingual authoring and media management against shared APIs.
@@ -46,14 +46,14 @@
   - Owner: admin agent. Uses `/api/admin/content` and `/api/admin/preview-mdx` returning sanitized `{html}`.
   - Verify slug manual override, upload-safe text insertion, stale preview cancellation, unsaved work and deletion confirmation.
 - [x] 5. Replace the application shell, home, library, and lesson reader; add recoverable route states and real bilingual sample lessons.
-  - Status: local acceptance complete; public Chinese/English search, locale switch/reload, reading/formulas, old links and safe login/account/admin entry states passed browser checks at 320, 768, 1024 and 1440px. The main local preview on port 3000 runs the production build in read-only bundled mode.
+  - Status: local acceptance complete; public Chinese/English search, locale switch/reload, reading/formulas, old links and safe login/account/admin entry states passed browser checks at 320, 768, 1024 and 1440px. The main localhost preview now runs the production build with real Google login and the persistent chemistry_development schema, preserving public.
   - Owner: root. Consume shared locale/content/access contracts. Preserve old URLs, including slugs containing `/` via a catch-all note route.
   - Verify language changes, content discovery, breadcrumbs, previous/next, accurate counts, mobile navigation, missing translations and dependency outage notices.
 - [x] 6. Integrate, review, and verify with `npm test`, `npm run lint`, `npm run typecheck`, `npm run build`, then real-browser checks at desktop and mobile widths.
   - Status: final frozen source passed 87/87 tests, ESLint 0 errors, TypeScript 0 errors, production build, format check and npm audit 0 vulnerabilities. The 13-group isolated database workflow and public browser acceptance are complete; fixture cleanup and schema removal are confirmed.
   - Record external limitations separately from local checks. Update environment and migration instructions, leaving production changes for the final review.
 - [ ] 7. Verify production access and release prerequisites, then review deployment and application migration separately.
-  - Status: Vercel Production environment access is still 403; live OAuth, authenticated admin browser UI, live Storage, the production connection, migration approval, and deployment remain unverified or unexecuted.
+  - Status: development Google OAuth and reload-persistent session are verified in ordinary Chrome. Vercel Production environment access is still 403; production OAuth, authenticated admin browser UI, live Storage, the production connection, migration approval, and deployment remain unverified or unexecuted.
 
 ## Commands: baseline and current implementation
 
