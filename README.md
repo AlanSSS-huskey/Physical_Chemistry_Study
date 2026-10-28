@@ -34,7 +34,9 @@ CHEMISTRY_CONTENT_MODE=bundled DISABLE_GOOGLE_LOGIN=true npm run dev
 
 `CHEMISTRY_CONTENT_MODE=bundled` 不读取数据库内容，也不允许保存学习进度。生产环境应清除此设置后验证实际数据库连接。配置了数据库但连接失败时，文章服务会关闭读取并显示恢复提示，防止同名私有内容被本地样例替代。
 
-当前[本地预览](http://localhost:3000)运行生产构建的只读随站样例模式，可检查双语阅读和导航，不用于验证账户写入或线上发布。
+当前[本地预览](http://localhost:3000)已启用 Google 登录，使用 Supabase 的 `postgrese/chemistry_development` 持久开发数据区。该区域已应用三项迁移并导入两章双语课程，既有 `public` 的表和数据保持不变。Google 授权入口已实测；首次登录和进度保存仍需本人完成 Google 授权后验收。
+
+本地连接覆盖保存在被 Git 忽略的 `.env.local`，原 `.env` 保留。使用 `http://localhost:3000` 访问并保持 `NEXTAUTH_URL` 一致，避免与 `127.0.0.1` 混用导致 OAuth cookie 丢失。Google 账户信息和开发学习进度保存在开发数据区，不会自动迁移到正式环境。
 
 ## 环境配置
 
