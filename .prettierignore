@@ -1,0 +1,6 @@
+node_modules
+.next
+package-lock.json
+prisma/migrations
+# Billing is unchanged by the learning-platform refactor.
+src/app/api/webhooks/stripe/route.ts

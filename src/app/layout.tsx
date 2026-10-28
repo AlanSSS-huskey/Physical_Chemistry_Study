@@ -1,50 +1,68 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import "./globals.css";
 import "katex/dist/katex.min.css";
-import Link from "next/link";
 import { Providers } from "@/app/providers";
-import { AuthNav } from "@/components/AuthNav";
-import { getGoogleOAuthConfig } from "@/lib/auth";
+import { SiteHeader } from "@/components/SiteHeader";
+import { LocaleProvider } from "@/components/LocaleProvider";
+import { getAuthAvailability, getSessionState } from "@/lib/auth";
+import { getLocale } from "@/lib/locale-server";
+import { textFor } from "@/lib/i18n";
 
 export const metadata: Metadata = {
-  title: "Physical Chemistry Study",
-  description: "Physical Chemistry 学习站点（MVP）"
+  title: {
+    default: "Physical Chemistry Study · 物理化学",
+    template: "%s · Physical Chemistry Study",
+  },
+  description:
+    "Bilingual physical chemistry lessons, worked examples and study notes. 中英文物理化学课程、例题与学习笔记。",
 };
 
 export default async function RootLayout({
-  children
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
-  const authConfigured = getGoogleOAuthConfig().configured;
+  children,
+}: Readonly<{ children: React.ReactNode }>) {
+  const locale = await getLocale();
+  const authConfigured = getAuthAvailability().status === "ready";
+  const session = await getSessionState();
+  const authStatus =
+    session.status === "unavailable"
+      ? "unavailable"
+      : getAuthAvailability().status;
   return (
-    <html lang="zh-CN">
-      <body className="min-h-screen bg-white text-zinc-900">
-        <Providers>
-          <header className="sticky top-0 z-40 border-b border-slate-200/80 bg-white/85 backdrop-blur-md">
-            <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3">
-              <Link href="/" className="text-sm font-black tracking-[0.12em] text-slate-800 uppercase">
-                Physical Chem Lab
-              </Link>
-              <nav className="flex flex-1 items-center justify-end gap-2 text-sm text-slate-700">
-                <Link href="/learn" className="rounded-md px-3 py-1.5 hover:bg-slate-100 hover:text-slate-900">
-                  学习
+    <html lang={locale === "zh" ? "zh-CN" : "en"}>
+      <body>
+        <LocaleProvider locale={locale}>
+          <Providers>
+            <a href="#main-content" className="skip-link">
+              {textFor(locale, "跳至正文", "Skip to content")}
+            </a>
+            <SiteHeader
+              authConfigured={authConfigured}
+              authStatus={authStatus}
+            />
+            <main id="main-content" className="site-main">
+              {children}
+            </main>
+            <footer className="site-footer">
+              <div>
+                <strong>Physical Chemistry Study</strong>
+                <p>
+                  {textFor(
+                    locale,
+                    "从一个概念开始，把理解连成体系。",
+                    "One concept at a time. A connected understanding.",
+                  )}
+                </p>
+              </div>
+              <div className="footer-links">
+                <span>中文 / English</span>
+                <Link href="/admin">
+                  {textFor(locale, "内容管理", "Manage content")}
                 </Link>
-                <Link href="/notes" className="rounded-md px-3 py-1.5 hover:bg-slate-100 hover:text-slate-900">
-                  Notes
-                </Link>
-                <Link href="/account" className="rounded-md px-3 py-1.5 hover:bg-slate-100 hover:text-slate-900">
-                  账户
-                </Link>
-                <Link href="/admin" className="rounded-md px-3 py-1.5 hover:bg-slate-100 hover:text-slate-900">
-                  Admin
-                </Link>
-                <AuthNav authConfigured={authConfigured} />
-              </nav>
-            </div>
-          </header>
-          <main className="mx-auto max-w-7xl px-4 py-8">{children}</main>
-        </Providers>
+              </div>
+            </footer>
+          </Providers>
+        </LocaleProvider>
       </body>
     </html>
   );

@@ -1,74 +1,148 @@
 import Link from "next/link";
+import { getLocale } from "@/lib/locale-server";
+import { textFor } from "@/lib/i18n";
+import { loadLibrary } from "@/lib/content-service";
+import { ContentCard } from "@/components/ContentCard";
+import { ScientificFigure } from "@/components/ScientificFigure";
+import { ServiceNotice } from "@/components/ServiceNotice";
 
-export default function HomePage() {
+export default async function HomePage() {
+  const locale = await getLocale();
+  const { items, databaseAvailable } = await loadLibrary(locale);
+  const subjects = new Set(items.map((item) => item.subjectSlug));
   return (
-    <div className="space-y-8">
-      <section className="relative overflow-hidden rounded-3xl border border-slate-200 bg-gradient-to-br from-white via-slate-50 to-blue-50 p-8 shadow-sm md:p-12">
-        <div className="absolute -right-8 -top-8 h-40 w-40 rounded-full bg-blue-200/35 blur-2xl" />
-        <div className="absolute -bottom-10 left-1/3 h-40 w-40 rounded-full bg-amber-200/30 blur-2xl" />
-        <div className="relative space-y-4">
-          <div className="inline-flex rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-bold uppercase tracking-wider text-blue-700">
-            University-Level Study Hub
+    <div className="home-page">
+      <section className="home-hero">
+        <div className="hero-copy">
+          <div className="eyebrow hero-eyebrow">
+            <span className="small-line" />
+            {textFor(
+              locale,
+              "物理化学 · 双语学习空间",
+              "PHYSICAL CHEMISTRY · A BILINGUAL STUDY SPACE",
+            )}
           </div>
-          <h1 className="max-w-3xl text-3xl font-black leading-tight tracking-tight text-slate-900 md:text-5xl">
-            Physical Chemistry Study Workspace
+          <h1>
+            {textFor(locale, "让公式背后的", "Make sense of")}
+            <br />
+            <em>
+              {textFor(locale, "世界，清晰起来。", "the science behind it.")}
+            </em>
           </h1>
-          <p className="max-w-2xl text-slate-600">
-            内容阅读、章节进度、权限控制、后台管理都已在同一套 Next.js + NextAuth +
-            Prisma 架构里打通。
+          <p className="hero-description">
+            {textFor(
+              locale,
+              "从热力学的基本概念，到一步步的公式推导。用中英文笔记、例题和练习，建立真正连贯的理解。",
+              "From the foundations of thermodynamics to step-by-step derivations. Build a connected understanding with bilingual notes, worked examples and practice.",
+            )}
           </p>
-          <div className="flex flex-wrap gap-3 pt-2">
-            <Link
-              href="/learn"
-              className="rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-slate-700"
-            >
-              打开学习中心
+          <div className="hero-actions">
+            <Link href="/learn" className="button">
+              {textFor(locale, "开始学习", "Explore the library")}
+              <span aria-hidden="true">↗</span>
             </Link>
-            <Link
-              href="/admin"
-              className="rounded-xl border border-slate-300 bg-white px-5 py-2.5 text-sm font-bold text-slate-700 hover:border-amber-300 hover:text-amber-700"
-            >
-              进入 Admin
+            <Link href="/notes" className="text-link">
+              {textFor(locale, "浏览全部笔记", "Browse all notes")}
+              <span aria-hidden="true">→</span>
             </Link>
           </div>
+          <div className="hero-footnote">
+            <span className="status-dot" />
+            {textFor(
+              locale,
+              "公开阅读 · 中英切换 · 循序渐进",
+              "Open lessons · Two languages · Step by step",
+            )}
+          </div>
         </div>
+        <ScientificFigure locale={locale} />
       </section>
-
-      <section className="grid gap-4 md:grid-cols-3">
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-          <div className="text-xs font-bold uppercase tracking-wider text-slate-400">Reader</div>
-          <div className="mt-2 text-2xl font-black text-slate-900">MDX + KaTeX</div>
-          <p className="mt-2 text-sm text-slate-600">章节按学科组织，支持公式渲染和预览裁剪。</p>
+      <div className="facts-strip">
+        <div>
+          <strong>{String(items.length).padStart(2, "0")}</strong>
+          <span>{textFor(locale, "可阅读章节", "Available chapters")}</span>
         </div>
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-          <div className="text-xs font-bold uppercase tracking-wider text-slate-400">Auth</div>
-          <div className="mt-2 text-2xl font-black text-slate-900">NextAuth</div>
-          <p className="mt-2 text-sm text-slate-600">登录态、学习进度和 admin 二次密码都可联动。</p>
+        <div>
+          <strong>{String(subjects.size).padStart(2, "0")}</strong>
+          <span>{textFor(locale, "学科主题", "Subject areas")}</span>
         </div>
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-          <div className="text-xs font-bold uppercase tracking-wider text-slate-400">Data</div>
-          <div className="mt-2 text-2xl font-black text-slate-900">Prisma</div>
-          <p className="mt-2 text-sm text-slate-600">进度、订阅、授权映射等核心表结构可持续扩展。</p>
+        <div>
+          <strong>中 / EN</strong>
+          <span>{textFor(locale, "双语学习", "Bilingual by design")}</span>
         </div>
-      </section>
-
-      <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-        <h2 className="mb-3 text-sm font-black uppercase tracking-wider text-slate-500">
-          环境准备
-        </h2>
-        <div className="grid gap-2 text-sm text-slate-700 md:grid-cols-2">
-          <div className="rounded-lg bg-slate-50 px-3 py-2">Node.js + npm/pnpm</div>
-          <div className="rounded-lg bg-slate-50 px-3 py-2">PostgreSQL + DATABASE_URL</div>
-          <div className="rounded-lg bg-slate-50 px-3 py-2">Google OAuth 凭据</div>
-          <div className="rounded-lg bg-slate-50 px-3 py-2">Stripe 测试 Key + Webhook</div>
-        </div>
-        <div className="mt-4 flex flex-wrap gap-3">
-          <Link
-            href="/account"
-            className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-          >
-            查看账户页
+        <p>
+          {textFor(
+            locale,
+            "先理解为什么，再记住是什么。",
+            "Understand the why. Remember the what.",
+          )}
+        </p>
+      </div>
+      {!databaseAvailable && <ServiceNotice locale={locale} />}
+      <section className="home-library">
+        <div className="section-header">
+          <div>
+            <div className="eyebrow">THE STUDY LIBRARY</div>
+            <h2>{textFor(locale, "从这里开始", "A good place to begin")}</h2>
+          </div>
+          <Link className="text-link" href="/learn">
+            {textFor(locale, "查看学习中心", "View the library")}
+            <span aria-hidden="true">→</span>
           </Link>
+        </div>
+        <div className="content-grid">
+          {items.slice(0, 4).map((item, index) => (
+            <ContentCard
+              key={item.slug}
+              content={item}
+              locale={locale}
+              index={index}
+            />
+          ))}
+        </div>
+        {!items.length && (
+          <div className="panel muted">
+            {textFor(
+              locale,
+              "课程正在整理中，请稍后再来。",
+              "Lessons are being prepared. Please check back soon.",
+            )}
+          </div>
+        )}
+      </section>
+      <section className="learning-principles">
+        <div>
+          <span className="eyebrow">01 / UNDERSTAND</span>
+          <h3>{textFor(locale, "把概念讲明白", "Start with understanding")}</h3>
+          <p>
+            {textFor(
+              locale,
+              "先建立物理图像，再引入定义、假设和公式。",
+              "Build a physical picture before introducing definitions, assumptions and equations.",
+            )}
+          </p>
+        </div>
+        <div>
+          <span className="eyebrow">02 / CONNECT</span>
+          <h3>{textFor(locale, "把知识连起来", "Connect the ideas")}</h3>
+          <p>
+            {textFor(
+              locale,
+              "同一章节切换中英文，术语、推导和学习位置保持连贯。",
+              "Switch languages within a chapter while keeping your terminology, context and place.",
+            )}
+          </p>
+        </div>
+        <div>
+          <span className="eyebrow">03 / PRACTISE</span>
+          <h3>{textFor(locale, "让理解经得起练习", "Put it into practice")}</h3>
+          <p>
+            {textFor(
+              locale,
+              "用例题检查符号、单位和条件，再保存你的学习进度。",
+              "Check signs, units and assumptions with worked examples, then save your progress.",
+            )}
+          </p>
         </div>
       </section>
     </div>

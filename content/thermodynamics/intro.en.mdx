@@ -1,0 +1,75 @@
+---
+subject: thermodynamics
+subjectTitle: Thermodynamics
+chapter: intro
+chapterTitle: Foundations & state functions
+order: 1
+previewRatio: 1
+---
+
+Thermodynamics studies the transfer of energy and changes in the state of matter from a macroscopic perspective. Start with the language used to describe a system, then connect an equation to its physical meaning through a worked example.
+
+## What you will learn
+
+- Distinguish a system, its surroundings and its boundary.
+- Describe an equilibrium state using pressure, volume, temperature and amount of substance.
+- Explain the difference between state functions and path quantities.
+- Use consistent units in the ideal-gas equation.
+
+## 1. Choose your system
+
+The **system** is the matter or region of space chosen for study. Everything else is the **surroundings**. The boundary can be a physical container wall or an imaginary surface.
+
+| Type of system | Exchanges matter | Exchanges energy |
+| --- | --- | --- |
+| Open system | Yes | Yes |
+| Closed system | No | Yes |
+| Isolated system | No | No |
+
+> Closed does not mean thermally insulated. A sealed flask can still exchange heat with its surroundings through its walls.
+
+## 2. Describe an equilibrium state
+
+A gas is commonly described by $P$ (pressure), $V$ (volume), $T$ (absolute temperature) and $n$ (amount of substance). For an ideal gas:
+
+$$
+PV = nRT
+$$
+
+Here $R = 8.314\ \mathrm{J\,mol^{-1}\,K^{-1}}$. With this value, use pressure in Pa, volume in $\mathrm{m^3}$ and temperature in K.
+
+This is an **equation of state**, not a relation that every real gas obeys exactly under all conditions. The ideal-gas approximation is generally better at low pressure and high temperature, away from condensation.
+
+## 3. State functions and path quantities
+
+The change in a **state function** depends only on the initial and final states. Internal energy $U$, enthalpy $H$ and entropy $S$ are examples. Changing the path from A to B does not change $\Delta U$.
+
+$$
+\Delta U = U_B - U_A
+$$
+
+Heat $q$ and work $w$ describe energy transferred during a process. They depend on the path. A system has internal energy; heat is energy in transit, rather than a quantity stored in the system.
+
+## 4. Worked example: the volume of one mole of gas
+
+**Given:** $n=1.00\ \mathrm{mol}$, $T=300\ \mathrm K$ and $P=1.01325\times10^5\ \mathrm{Pa}$. Treat the gas as ideal.
+
+Rearrange first, then substitute:
+
+$$
+V = \frac{nRT}{P}
+= \frac{1.00\times8.314\times300}{1.01325\times10^5}
+\approx 2.46\times10^{-2}\ \mathrm{m^3}
+$$
+
+Using $1\ \mathrm{m^3}=1000\ \mathrm L$, the result is **$V\approx24.6\ \mathrm L$**.
+
+Unit check: $\mathrm{J/Pa}=\mathrm{m^3}$ because $1\ \mathrm J=1\ \mathrm{Pa\,m^3}$.
+
+## Check your understanding
+
+1. A sealed flask is placed in a hot-water bath. What type of system is it?
+2. Two paths connect the same initial and final states. Is $\Delta U$ the same? Must $q$ be the same?
+3. At fixed $n$ and $T$, what happens to the volume when the ideal-gas pressure doubles?
+
+**Answers:** Closed; $\Delta U$ is the same but $q$ need not be; the volume halves.

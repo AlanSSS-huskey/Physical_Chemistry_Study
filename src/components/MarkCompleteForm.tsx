@@ -1,49 +1,72 @@
-import { prisma } from "@/lib/db";
-import { getCurrentUser, getGoogleOAuthConfig } from "@/lib/auth";
-import { toggleChapterComplete } from "@/app/learn/[subject]/[chapter]/actions";
 import Link from "next/link";
+import { getSessionState } from "@/lib/auth";
+import { getLocale } from "@/lib/locale-server";
+import { contentHref, textFor } from "@/lib/i18n";
+import { loadChapterProgress } from "@/lib/progress";
+import { ProgressButton } from "@/components/ProgressButton";
 
-export async function MarkCompleteForm({ contentSlug }: { contentSlug: string }) {
-  const authConfigured = getGoogleOAuthConfig().configured;
-  const user = await getCurrentUser();
-
-  if (!user) {
+export async function MarkCompleteForm({
+  contentSlug,
+}: {
+  contentSlug: string;
+}) {
+  const [locale, session] = await Promise.all([getLocale(), getSessionState()]);
+  if (session.status === "unconfigured") {
     return (
-      <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
-        {authConfigured ? (
-          <>
-            想要保存学习进度？请先{" "}
-            <Link className="underline" href="/api/auth/signin">
-              登录
-            </Link>
-            。
-          </>
-        ) : (
-          <>学习进度需登录，登录功能待配置。</>
+      <div className="notice text-sm">
+        {textFor(
+          locale,
+          "登录服务尚未配置，暂时无法保存学习进度。你仍可继续阅读。",
+          "Sign-in has not been configured, so progress cannot be saved yet. You can continue reading.",
         )}
       </div>
     );
   }
-
-  const progress = await prisma.progress.findUnique({
-    where: { userId_contentSlug: { userId: user.id, contentSlug } },
-    select: { status: true }
-  });
-
-  const isCompleted = progress?.status === "COMPLETED";
-
+  if (session.status === "unavailable") {
+    return (
+      <div className="notice notice-error text-sm" role="status">
+        {textFor(
+          locale,
+          "登录服务暂时不可用。请稍后刷新页面再保存进度。",
+          "Sign-in is temporarily unavailable. Refresh this page shortly to save your progress.",
+        )}
+      </div>
+    );
+  }
+  if (session.status !== "authenticated") {
+    return (
+      <div className="notice text-sm">
+        {textFor(
+          locale,
+          "登录后可保存学习进度。",
+          "Sign in to save your learning progress.",
+        )}{" "}
+        <Link
+          className="underline"
+          href={`/login?callbackUrl=${encodeURIComponent(contentHref(contentSlug))}`}
+        >
+          {textFor(locale, "使用 Google 登录", "Sign in with Google")}
+        </Link>
+      </div>
+    );
+  }
+  const progress = await loadChapterProgress(session.user.id, contentSlug);
+  if (!progress.available) {
+    return (
+      <div className="notice notice-error text-sm" role="status">
+        {textFor(
+          locale,
+          "学习进度暂时无法读取。请稍后刷新页面重试。",
+          "Your progress could not be loaded. Refresh this page shortly to try again.",
+        )}
+      </div>
+    );
+  }
   return (
-    <form action={toggleChapterComplete.bind(null, contentSlug)}>
-      <button
-        type="submit"
-        className={
-          isCompleted
-            ? "rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-800 hover:bg-emerald-100"
-            : "rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:border-blue-300 hover:text-blue-700"
-        }
-      >
-        {isCompleted ? "Marked complete (click to undo)" : "Mark as complete"}
-      </button>
-    </form>
+    <ProgressButton
+      key={`${contentSlug}:${progress.completed}`}
+      contentSlug={contentSlug}
+      initialCompleted={progress.completed}
+    />
   );
 }

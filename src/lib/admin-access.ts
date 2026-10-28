@@ -1,25 +1,38 @@
 import { redirect } from "next/navigation";
-import { getCurrentUser } from "@/lib/auth";
+import {
+  AuthenticationUnavailableError,
+  getCurrentUser,
+  getSessionState,
+  logAuthFailure,
+} from "@/lib/auth";
 import { userIsAdmin } from "@/lib/entitlements";
 
+/** API callers must convert service failures to a generic 503 response. */
 export async function getAdminUserOrNull() {
-  const user = await getCurrentUser();
-  if (!user?.id) return null;
-  const isAdmin = await userIsAdmin(user.id);
-  if (!isAdmin) return null;
-  return user;
+  try {
+    const user = await getCurrentUser();
+    if (!user?.id || !(await userIsAdmin(user.id))) return null;
+    return user;
+  } catch (error) {
+    if (!(error instanceof AuthenticationUnavailableError))
+      logAuthFailure("ADMIN_LOOKUP", error);
+    throw new AuthenticationUnavailableError();
+  }
 }
 
 export async function requireAdminUser() {
-  const user = await getCurrentUser();
-  if (!user?.id) {
-    redirect("/api/auth/signin?callbackUrl=/admin");
+  const session = await getSessionState();
+  if (session.status === "unavailable")
+    redirect("/login?error=unavailable&callbackUrl=%2Fadmin");
+  if (session.status !== "authenticated")
+    redirect("/login?callbackUrl=%2Fadmin");
+  let isAdmin = false;
+  try {
+    isAdmin = await userIsAdmin(session.user.id);
+  } catch (error) {
+    logAuthFailure("ADMIN_PAGE_LOOKUP", error);
+    redirect("/login?error=unavailable&callbackUrl=%2Fadmin");
   }
-
-  const isAdmin = await userIsAdmin(user.id);
-  if (!isAdmin) {
-    redirect("/");
-  }
-
-  return user;
+  if (!isAdmin) redirect("/");
+  return session.user;
 }

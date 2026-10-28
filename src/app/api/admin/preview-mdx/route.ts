@@ -1,36 +1,44 @@
-import { serialize } from "next-mdx-remote/serialize";
-import remarkMath from "remark-math";
-import rehypeKatex from "rehype-katex";
-import remarkGfm from "remark-gfm";
 import { getAdminUserOrNull } from "@/lib/admin-access";
+import { renderMarkdown } from "@/lib/markdown";
+import {
+  ContentValidationError,
+  MAX_CONTENT_LENGTH,
+  contentApiFailure,
+  isTrustedMutationRequest,
+  parseContentJson,
+} from "@/lib/content-validation";
 
-const MAX_PREVIEW_LENGTH = 300_000;
-
-export async function POST(req: Request) {
-  const user = await getAdminUserOrNull();
-  if (!user) {
-    return Response.json({ error: "Forbidden" }, { status: 403 });
-  }
-
-  let payload: unknown;
+export async function POST(request: Request) {
+  if (!isTrustedMutationRequest(request))
+    return Response.json(
+      { error: "Forbidden", code: "FORBIDDEN" },
+      { status: 403 },
+    );
   try {
-    payload = await req.json();
-  } catch {
-    return Response.json({ error: "Invalid JSON" }, { status: 400 });
+    const user = await getAdminUserOrNull();
+    if (!user)
+      return Response.json(
+        { error: "Forbidden", code: "FORBIDDEN" },
+        { status: 403 },
+      );
+    const payload = await parseContentJson(request);
+    if (
+      !payload ||
+      typeof payload !== "object" ||
+      Array.isArray(payload) ||
+      !("source" in payload) ||
+      typeof payload.source !== "string" ||
+      payload.source.length > MAX_CONTENT_LENGTH
+    ) {
+      throw new ContentValidationError(
+        "Preview source must be text up to 300000 characters",
+      );
+    }
+    return Response.json(
+      { html: await renderMarkdown(payload.source) },
+      { headers: { "Cache-Control": "no-store" } },
+    );
+  } catch (error) {
+    return contentApiFailure(error);
   }
-
-  const source = String((payload as Record<string, unknown>).source ?? "").slice(
-    0,
-    MAX_PREVIEW_LENGTH
-  );
-
-  const mdx = await serialize(source, {
-    mdxOptions: {
-      remarkPlugins: [remarkGfm, remarkMath],
-      rehypePlugins: [rehypeKatex]
-    },
-    parseFrontmatter: false
-  });
-
-  return Response.json({ mdx });
 }

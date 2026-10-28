@@ -14,8 +14,9 @@ export async function userHasEntitlement(params: {
 
 async function userHasEntitlementByKey(
   userId: string,
-  entitlementKey: string
+  entitlementKey: string,
 ): Promise<boolean> {
+  if (!userId.trim()) return false;
   const normalizedKey = normalizeKey(entitlementKey);
   if (!normalizedKey) return false;
 
@@ -24,17 +25,18 @@ async function userHasEntitlementByKey(
     where: {
       userId,
       entitlement: { key: normalizedKey },
-      OR: [{ expiresAt: null }, { expiresAt: { gt: now } }]
+      OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
     },
-    select: { id: true }
+    select: { id: true },
   });
   return Boolean(hit);
 }
 
 export async function userIsAdmin(userId: string): Promise<boolean> {
+  if (!userId.trim()) return false;
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { role: true }
+    select: { role: true },
   });
   return user?.role === "ADMIN";
 }
@@ -49,7 +51,7 @@ export async function canAccessModule(params: {
   if (await userIsAdminCached(params.userId)) return true;
   return userHasEntitlementByKeyCached(
     params.userId,
-    `module:${normalizedModuleKey}`
+    `module:${normalizedModuleKey}`,
   );
 }
 

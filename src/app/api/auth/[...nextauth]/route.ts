@@ -1,82 +1,82 @@
 import NextAuth from "next-auth";
 import type { NextRequest } from "next/server";
-import { getAuthOptions, getGoogleOAuthConfig, isDatabaseConfigured } from "@/lib/auth";
+import {
+  getAuthAvailability,
+  getAuthOptions,
+  logAuthFailure,
+  trackAuthOperation,
+} from "@/lib/auth";
+import { hasSessionCookie } from "@/lib/auth-config";
 
-function missingConfigResponse() {
-  const authSecretConfigured = Boolean(process.env.NEXTAUTH_SECRET ?? process.env.AUTH_SECRET);
-  const databaseConfigured = isDatabaseConfigured();
+type AuthRouteContext = { params: Promise<{ nextauth: string[] }> };
 
-  return new Response(
-    [
-      "Auth is not configured.",
-      "Set env vars:",
-      "- GOOGLE_CLIENT_ID (or AUTH_GOOGLE_ID)",
-      "- GOOGLE_CLIENT_SECRET (or AUTH_GOOGLE_SECRET)",
-      databaseConfigured
-        ? "- DATABASE_URL is configured (optional if using JWT session fallback)"
-        : "- DATABASE_URL is optional (JWT session fallback is used when missing)",
-      authSecretConfigured
-        ? "- NEXTAUTH_SECRET is configured"
-        : "- NEXTAUTH_SECRET (or AUTH_SECRET) is required in production",
-      "- NEXTAUTH_URL"
-    ].join("\n"),
-    { status: 500 }
+function unavailable(status: "unconfigured" | "unavailable"): Response {
+  return Response.json(
+    {
+      error:
+        status === "unconfigured" ? "AUTH_NOT_CONFIGURED" : "AUTH_UNAVAILABLE",
+      message:
+        status === "unconfigured"
+          ? "Sign-in has not been configured yet."
+          : "Sign-in is temporarily unavailable. Please try again later.",
+      url: `/login?error=${status === "unconfigured" ? "configuration" : "unavailable"}`,
+    },
+    { status: 503, headers: { "Cache-Control": "no-store" } },
   );
 }
 
-function isSecretConfigured() {
-  return Boolean(process.env.NEXTAUTH_SECRET ?? process.env.AUTH_SECRET);
-}
-
-function shouldExposeDebugDetails() {
-  return process.env.VERCEL_ENV === "preview" || process.env.NODE_ENV !== "production";
-}
-
-function formatAuthError(prefix: string, error: unknown): string {
-  const message = error instanceof Error ? error.message : String(error);
-  const stack = error instanceof Error ? error.stack ?? "" : "";
-  if (!shouldExposeDebugDetails()) {
-    return `${prefix}\n\nmessage: ${message}`;
+async function handleAuth(
+  req: NextRequest,
+  context: AuthRouteContext,
+): Promise<Response> {
+  const params = await context.params;
+  const configured = getAuthAvailability().status === "ready";
+  if (!configured) {
+    // SessionProvider can mount on public pages before authentication is set up.
+    const cookieHeader = req.headers.get("cookie") ?? "";
+    const cookiePairs = cookieHeader.split(";").map((part) => {
+      const index = part.indexOf("=");
+      return {
+        name: part.slice(0, index).trim(),
+        value: index < 0 ? "" : part.slice(index + 1),
+      };
+    });
+    if (
+      req.method === "GET" &&
+      params.nextauth[0] === "session" &&
+      !hasSessionCookie(cookiePairs)
+    ) {
+      return Response.json({}, { headers: { "Cache-Control": "no-store" } });
+    }
+    return unavailable("unconfigured");
   }
-  return [prefix, `message: ${message}`, stack ? `stack:\n${stack}` : ""]
-    .filter(Boolean)
-    .join("\n\n");
-}
-
-function ensureAuthConfigured() {
-  const google = getGoogleOAuthConfig();
-  const requireSecret = process.env.NODE_ENV === "production";
-  if (!google.configured) return false;
-  if (requireSecret && !isSecretConfigured()) return false;
-  return true;
-}
-
-export async function GET(
-  req: Request,
-  context: { params: Promise<{ nextauth: string[] }> }
-) {
-  if (!ensureAuthConfigured()) return missingConfigResponse();
   try {
-    const nextAuthHandler = NextAuth(getAuthOptions());
-    const params = await context.params;
-    return await nextAuthHandler(req as NextRequest, { params });
+    const { result: response, failed } = await trackAuthOperation<Response>(
+      () => NextAuth(getAuthOptions())(req, { params }),
+    );
+    if (failed && req.method === "GET" && params.nextauth[0] === "callback") {
+      return Response.redirect(
+        new URL("/login?error=unavailable", req.url),
+        303,
+      );
+    }
+    return failed ? unavailable("unavailable") : response;
   } catch (error) {
-    console.error("Auth GET route failed:", error);
-    return new Response(formatAuthError("Auth route internal error.", error), { status: 500 });
+    logAuthFailure("AUTH_ROUTE", error);
+    return unavailable("unavailable");
   }
 }
 
-export async function POST(
-  req: Request,
-  context: { params: Promise<{ nextauth: string[] }> }
-) {
-  if (!ensureAuthConfigured()) return missingConfigResponse();
-  try {
-    const nextAuthHandler = NextAuth(getAuthOptions());
-    const params = await context.params;
-    return await nextAuthHandler(req as NextRequest, { params });
-  } catch (error) {
-    console.error("Auth POST route failed:", error);
-    return new Response(formatAuthError("Auth route internal error.", error), { status: 500 });
-  }
+export function GET(
+  req: NextRequest,
+  context: AuthRouteContext,
+): Promise<Response> {
+  return handleAuth(req, context);
+}
+
+export function POST(
+  req: NextRequest,
+  context: AuthRouteContext,
+): Promise<Response> {
+  return handleAuth(req, context);
 }

@@ -134,6 +134,9 @@ model Content {
   body        String @default("") @db.Text
   subjectSlug String?
   chapterSlug String?
+  translations Json?
+  order        Int     @default(0)
+  isPublished  Boolean @default(true)
 
   // Where the content is sourced from (for MVP: a filesystem path).
   sourcePath String?
@@ -155,6 +158,8 @@ model ImageAsset {
   url        String   @unique
   size       Int
   uploadedBy String
+  storagePath String?
+  mimeType    String?
   createdAt  DateTime @default(now())
 
   user User @relation(fields: [uploadedBy], references: [id], onDelete: Cascade)

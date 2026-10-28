@@ -1,20 +1,11 @@
-import { MDXRemote } from "next-mdx-remote/rsc";
-import remarkMath from "remark-math";
-import rehypeKatex from "rehype-katex";
-import remarkGfm from "remark-gfm";
+import { renderMarkdown } from "@/lib/markdown";
 
-export function MdxRenderer({ source }: { source: string }) {
+export async function MdxRenderer({ source }: { source: string }) {
+  const html = await renderMarkdown(source);
   return (
-    <div className="prose prose-slate max-w-none text-slate-700">
-      <MDXRemote
-        source={source}
-        options={{
-          mdxOptions: {
-            remarkPlugins: [remarkGfm, remarkMath],
-            rehypePlugins: [rehypeKatex]
-          }
-        }}
-      />
-    </div>
+    <div
+      className="article-content"
+      dangerouslySetInnerHTML={{ __html: html }}
+    />
   );
 }

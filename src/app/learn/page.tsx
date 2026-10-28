@@ -1,48 +1,86 @@
 import Link from "next/link";
-import { getNavigationTree } from "@/lib/content";
+import { getLocale } from "@/lib/locale-server";
+import { textFor, contentHref } from "@/lib/i18n";
+import { loadLibrary } from "@/lib/content-service";
+import { ServiceNotice } from "@/components/ServiceNotice";
 
 export default async function LearnIndexPage() {
-  const tree = await getNavigationTree();
-  const totalChapters = tree.subjects.reduce((acc, subject) => acc + subject.chapters.length, 0);
-
+  const locale = await getLocale();
+  const { items, databaseAvailable } = await loadLibrary(locale);
+  const groups = new Map<string, typeof items>();
+  for (const item of items)
+    groups.set(item.subjectSlug, [
+      ...(groups.get(item.subjectSlug) ?? []),
+      item,
+    ]);
   return (
     <div className="space-y-8">
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-        <h1 className="text-3xl font-black tracking-tight text-slate-900">Study Dashboard</h1>
-        <p className="mt-2 text-sm text-slate-600">公开浏览可用，后续通过 entitlement 控制完整内容权限。</p>
-        <div className="mt-5 grid grid-cols-2 gap-3 sm:max-w-sm">
-          <div className="rounded-xl bg-slate-50 p-4 text-center">
-            <div className="text-2xl font-black text-slate-900">{tree.subjects.length}</div>
-            <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Subjects</div>
-          </div>
-          <div className="rounded-xl bg-slate-50 p-4 text-center">
-            <div className="text-2xl font-black text-blue-700">{totalChapters}</div>
-            <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Chapters</div>
-          </div>
-        </div>
-      </div>
-
-      <div className="grid gap-4">
-        {tree.subjects.map((s) => (
-          <div key={s.slug} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <div className="flex items-center justify-between gap-4">
-              <div>
-                <div className="text-xs font-bold uppercase tracking-wider text-slate-400">Subject</div>
-                <div className="text-lg font-bold text-slate-800">{s.title}</div>
-                <div className="text-sm text-slate-500">{s.chapters.length} 章</div>
-              </div>
-              {s.chapters[0] ? (
-                <Link
-                  href={`/learn/${s.slug}/${s.chapters[0].slug}`}
-                  className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-bold text-white hover:bg-blue-700"
-                >
-                  进入第一章
-                </Link>
-              ) : null}
+      <header className="page-intro">
+        <div className="eyebrow">YOUR STUDY LIBRARY</div>
+        <h1 className="page-heading">
+          {textFor(locale, "学习中心", "The study library")}
+        </h1>
+        <p className="muted">
+          {textFor(
+            locale,
+            "按章节循序渐进，也可以从最感兴趣的概念开始。",
+            "Follow a chapter at a time, or start with the concept you are curious about.",
+          )}
+        </p>
+      </header>
+      {!databaseAvailable && <ServiceNotice locale={locale} />}
+      {[...groups].map(([subject, chapters], index) => (
+        <section key={subject} className="subject-section">
+          <div className="subject-heading">
+            <span className="subject-index">
+              {String(index + 1).padStart(2, "0")}
+            </span>
+            <div>
+              <div className="eyebrow">{subject.replaceAll("-", " ")}</div>
+              <h2>{chapters[0].subjectTitle}</h2>
+              <p className="muted">
+                {chapters.length}{" "}
+                {textFor(
+                  locale,
+                  "个章节 · 中英双语",
+                  "chapters · Chinese & English",
+                )}
+              </p>
             </div>
           </div>
-        ))}
-      </div>
+          <ol className="chapter-list">
+            {chapters.map((chapter, i) => (
+              <li key={chapter.slug}>
+                <Link href={contentHref(chapter.slug)}>
+                  <span className="chapter-number">
+                    {String(i + 1).padStart(2, "0")}
+                  </span>
+                  <div>
+                    <h3>{chapter.title}</h3>
+                    <span className="muted">
+                      {textFor(locale, "阅读章节", "Read chapter")}
+                      {!chapter.translationAvailable &&
+                        ` · ${textFor(locale, "原文版本", "Original language")}`}
+                    </span>
+                  </div>
+                  <span className="card-arrow" aria-hidden="true">
+                    →
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ol>
+        </section>
+      ))}
+      {!items.length && (
+        <div className="panel muted">
+          {textFor(
+            locale,
+            "还没有发布的课程。",
+            "No lessons have been published yet.",
+          )}
+        </div>
+      )}
     </div>
   );
 }

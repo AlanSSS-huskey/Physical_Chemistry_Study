@@ -27,7 +27,10 @@ export type SubjectNavItem = {
 };
 
 export class ContentNotFoundError extends Error {
-  constructor(public readonly subject: string, public readonly chapter: string) {
+  constructor(
+    public readonly subject: string,
+    public readonly chapter: string,
+  ) {
     super(`Content not found for ${subject}/${chapter}`);
     this.name = "ContentNotFoundError";
   }
@@ -38,12 +41,12 @@ function asNonEmptyString(value: unknown): string | null {
 }
 
 function asNumber(value: unknown): number | undefined {
-  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
+  return typeof value === "number" && Number.isFinite(value)
+    ? value
+    : undefined;
 }
 
-function parseFrontmatter(
-  data: unknown
-): ContentFrontmatter | null {
+function parseFrontmatter(data: unknown): ContentFrontmatter | null {
   if (!data || typeof data !== "object") return null;
 
   const record = data as Record<string, unknown>;
@@ -69,7 +72,7 @@ function parseFrontmatter(
     chapterTitle,
     order: asNumber(record.order),
     moduleKey: asNonEmptyString(record.moduleKey) ?? undefined,
-    previewRatio
+    previewRatio,
   };
 }
 
@@ -101,7 +104,9 @@ export async function listMdxFiles(): Promise<string[]> {
   return out;
 }
 
-export async function getNavigationTree(): Promise<{ subjects: SubjectNavItem[] }> {
+export async function getNavigationTree(): Promise<{
+  subjects: SubjectNavItem[];
+}> {
   const files = await listMdxFiles();
   const bySubject = new Map<string, SubjectNavItem>();
 
@@ -122,7 +127,7 @@ export async function getNavigationTree(): Promise<{ subjects: SubjectNavItem[] 
       ({
         slug: subjectSlug,
         title: subjectTitle,
-        chapters: []
+        chapters: [],
       } satisfies SubjectNavItem);
 
     if (!bySubject.has(subjectSlug)) bySubject.set(subjectSlug, subj);
@@ -135,11 +140,13 @@ export async function getNavigationTree(): Promise<{ subjects: SubjectNavItem[] 
   const subjects = [...bySubject.values()].map((s) => ({
     ...s,
     chapters: [...s.chapters].sort(
-      (a, b) => a.order - b.order || a.title.localeCompare(b.title)
-    )
+      (a, b) => a.order - b.order || a.title.localeCompare(b.title),
+    ),
   }));
 
-  subjects.sort((a, b) => a.title.localeCompare(b.title) || a.slug.localeCompare(b.slug));
+  subjects.sort(
+    (a, b) => a.title.localeCompare(b.title) || a.slug.localeCompare(b.slug),
+  );
 
   return { subjects };
 }
@@ -172,7 +179,9 @@ export async function getMdxBySlug(params: {
 }
 
 export function renderPreview(content: string, ratio: number): string {
-  const safeRatio = Number.isFinite(ratio) ? Math.min(1, Math.max(0, ratio)) : 0.2;
+  const safeRatio = Number.isFinite(ratio)
+    ? Math.min(1, Math.max(0, ratio))
+    : 0.2;
   if (safeRatio >= 1) return content;
 
   const blocks = content
