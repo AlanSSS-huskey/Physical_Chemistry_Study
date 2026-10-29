@@ -12,6 +12,7 @@ import { ServiceNotice } from "@/components/ServiceNotice";
 import { isContentSlug } from "@/lib/content-validation";
 import { contentLookupOutcome } from "@/lib/reading-state";
 import { StudyWorkspace } from "@/components/study/StudyWorkspace";
+import { ChapterToc } from "@/components/navigation/ChapterToc";
 
 export async function StudyReader({ slug }: { slug: string }) {
   if (!isContentSlug(slug)) notFound();
@@ -128,6 +129,10 @@ export async function StudyReader({ slug }: { slug: string }) {
           </summary>
           {navigation}
         </details>
+        <ChapterToc
+          locale={locale}
+          contentKey={`${content.slug}:${content.sourceLocale}`}
+        />
       </aside>
       <article className="reader-article">
         <nav
