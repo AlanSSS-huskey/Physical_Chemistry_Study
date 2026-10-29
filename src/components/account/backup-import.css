@@ -1,0 +1,163 @@
+.backup-import {
+  border-top: 1px solid var(--border);
+  padding-top: 1.5rem;
+}
+.backup-import h3 {
+  font-size: 1rem;
+  font-weight: 600;
+}
+.backup-import h4,
+.backup-import h5 {
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+.backup-import-destination {
+  font-size: 0.85rem;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+.backup-import-file {
+  display: grid;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+.backup-import-file input {
+  width: 100%;
+  min-width: 0;
+  min-height: 2.75rem;
+  font-weight: 400;
+  color: var(--ink);
+}
+.backup-import-file input::file-selector-button {
+  background: var(--surface);
+  color: var(--ink);
+  border: 1px solid var(--border);
+  border-radius: 0.3rem;
+  padding: 0.65rem 0.75rem;
+  margin-right: 0.75rem;
+  cursor: pointer;
+}
+.backup-import-filename {
+  overflow-wrap: anywhere;
+}
+.backup-import-actions {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.backup-import-preview {
+  display: grid;
+  gap: 1rem;
+}
+.backup-import-counts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
+  border: 1px solid var(--border);
+  border-radius: 0.3rem;
+  background: var(--surface);
+}
+.backup-import-counts > div {
+  padding: 0.75rem;
+}
+.backup-import-counts dt {
+  color: var(--muted);
+  font-size: 0.75rem;
+  line-height: 1.5;
+}
+.backup-import-counts dd {
+  margin-top: 0.5rem;
+  font-size: 1.25rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.backup-import-notes {
+  display: grid;
+  gap: 0.5rem;
+}
+.backup-import-notes details {
+  border: 1px solid var(--border);
+  border-radius: 0.3rem;
+  background: var(--surface);
+  padding: 0.5rem 0.75rem;
+}
+.backup-import-notes summary {
+  cursor: pointer;
+  padding: 0.25rem 0;
+  font-size: 0.8rem;
+  overflow-wrap: anywhere;
+}
+.backup-import-notes summary strong {
+  margin-left: 0.75rem;
+  color: var(--accent);
+}
+.backup-import-comparison {
+  display: grid;
+  gap: 1rem;
+  margin: 0.75rem 0 0.25rem;
+}
+.backup-import-comparison > div {
+  min-width: 0;
+}
+.backup-import-comparison pre {
+  margin-top: 0.5rem;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 15rem;
+  overflow-y: auto;
+  background: var(--soft);
+  color: var(--ink);
+  padding: 0.75rem;
+  font-family: inherit;
+  font-size: 0.8rem;
+  line-height: 1.8;
+}
+.backup-import-choice {
+  display: grid;
+  gap: 0.75rem;
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 0.3rem;
+}
+.backup-import-choice legend {
+  padding: 0 0.25rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+.backup-import-choice label,
+.backup-import-confirm {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  font-size: 0.8rem;
+  line-height: 1.8;
+}
+.backup-import-choice input,
+.backup-import-confirm input {
+  margin-top: 0.35rem;
+  width: 1rem;
+  height: 1rem;
+  accent-color: var(--accent);
+  flex-shrink: 0;
+}
+.backup-import-choice small {
+  display: block;
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+.backup-import-result {
+  display: grid;
+  gap: 0.75rem;
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 0.3rem;
+  background: var(--soft);
+  font-size: 0.85rem;
+  line-height: 1.8;
+}
+@media (min-width: 768px) {
+  .backup-import-comparison {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

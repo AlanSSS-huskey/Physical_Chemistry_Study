@@ -7,6 +7,7 @@ import { AuthNav } from "@/components/AuthNav";
 import { useLocale } from "@/components/LocaleProvider";
 import { LOCALE_COOKIE, textFor, type Locale } from "@/lib/i18n";
 import { requestStateNavigation } from "@/lib/navigation-guard";
+import { QuickSearch } from "@/components/navigation/QuickSearch";
 
 export function SiteHeader({
   authConfigured,
@@ -71,6 +72,7 @@ export function SiteHeader({
           ))}
         </nav>
         <div className="header-controls">
+          <QuickSearch />
           <div
             className="language-switch"
             role="group"
