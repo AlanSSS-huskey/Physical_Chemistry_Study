@@ -41,6 +41,7 @@ type DatabaseContent = {
   previewRatio: number;
   isPublic: boolean;
   isPublished?: boolean;
+  deletedAt?: Date | string | null;
   updatedAt?: Date | string | null;
 };
 
@@ -109,7 +110,7 @@ export function localizeDatabaseContent(
     sourceLocale,
     translationAvailable: sourceLocale === locale,
     isPublic: row.isPublic,
-    isPublished: row.isPublished ?? true,
+    isPublished: !row.deletedAt && (row.isPublished ?? true),
     moduleKey: row.moduleRel?.key ?? null,
     previewRatio: Number.isFinite(row.previewRatio)
       ? Math.min(1, Math.max(0, row.previewRatio))
@@ -288,7 +289,7 @@ export async function loadContent(
       databaseAvailable = true;
       if (row)
         return {
-          content: localizeDatabaseContent(row, locale),
+          content: row.deletedAt ? null : localizeDatabaseContent(row, locale),
           databaseAvailable,
         };
     } catch {

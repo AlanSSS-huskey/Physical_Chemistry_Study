@@ -35,6 +35,19 @@ const required = [
   "Content",
   "Progress",
   "ImageAsset",
+  "PasswordCredential",
+  "PendingRegistration",
+  "EmailActionToken",
+  "AuthRateLimit",
+  "StudyPreference",
+  "ReadingPosition",
+  "Bookmark",
+  "PersonalNote",
+  "ContentDraft",
+  "ContentRevision",
+  "EmailChangeRequest",
+  "AccountDeletionRequest",
+  "StorageDeletion",
 ];
 
 console.log(
@@ -71,6 +84,14 @@ console.log(
           process.env.SUPABASE_SERVICE_ROLE_KEY,
         ),
         bucket: process.env.SUPABASE_STORAGE_BUCKET || "chemistry-images",
+      },
+      accountEmail: {
+        provider: "resend",
+        keyConfigured: Boolean(process.env.RESEND_API_KEY?.trim()),
+        senderConfigured: Boolean(
+          (process.env.EMAIL_FROM || process.env.AUTH_EMAIL_FROM)?.trim(),
+        ),
+        canonicalUrlConfigured: Boolean(process.env.NEXTAUTH_URL?.trim()),
       },
     },
     null,

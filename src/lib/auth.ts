@@ -3,12 +3,13 @@ import { AsyncLocalStorage } from "node:async_hooks";
 import type { NextAuthOptions, Session } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 import { getServerSession } from "next-auth";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { unstable_rethrow } from "next/navigation";
 import { prisma } from "@/lib/db";
 import {
   AuthenticationUnavailableError,
   authConfiguration,
+  googlePreviewPolicy,
   hasSessionCookie,
   hasValidDatabaseUrl,
   resolveDatabaseSession,
@@ -17,6 +18,7 @@ import {
   createSessionPolicyAdapter,
   createSessionToken,
   REMEMBERED_SESSION_SECONDS,
+  SESSION_ACTIVITY_INTERVAL_MS,
   type ObservedSession,
 } from "@/lib/session-policy";
 
@@ -35,7 +37,7 @@ export async function trackAuthOperation<T>(
   }));
 }
 
-export function getGoogleOAuthConfig() {
+export function getGoogleOAuthConfig(requestOrigin?: string) {
   const clientId =
     process.env.GOOGLE_CLIENT_ID?.trim() ||
     process.env.AUTH_GOOGLE_ID?.trim() ||
@@ -45,11 +47,15 @@ export function getGoogleOAuthConfig() {
     process.env.AUTH_GOOGLE_SECRET?.trim() ||
     "";
   const disabled = process.env.DISABLE_GOOGLE_LOGIN === "true";
+  const previewUnavailable = !googlePreviewPolicy(process.env, requestOrigin)
+    .allowed;
   return {
     clientId,
     clientSecret,
     disabled,
-    configured: !disabled && Boolean(clientId && clientSecret),
+    previewUnavailable,
+    configured:
+      !disabled && !previewUnavailable && Boolean(clientId && clientSecret),
   };
 }
 
@@ -84,13 +90,27 @@ export function logAuthFailure(context: string, error?: unknown) {
 }
 
 export function getAuthOptions(policy?: {
-  remember: boolean;
+  remember?: boolean;
   observe?: (session: ObservedSession) => void;
+  userAgent?: string;
 }): NextAuthOptions {
   const google = getGoogleOAuthConfig();
   return {
     adapter: createSessionPolicyAdapter(PrismaAdapter(prisma), {
       observe: policy?.observe,
+      userAgent: policy?.userAgent,
+      async touchSession(sessionToken, at, userAgent) {
+        await prisma.session.updateMany({
+          where: {
+            sessionToken,
+            expires: { gt: at },
+            lastActiveAt: {
+              lte: new Date(at.getTime() - SESSION_ACTIVITY_INTERVAL_MS),
+            },
+          },
+          data: { lastActiveAt: at, ...(userAgent ? { userAgent } : {}) },
+        });
+      },
     }),
     session: {
       strategy: "database",
@@ -132,14 +152,21 @@ export function getAuthOptions(policy?: {
 }
 
 export async function getSession(): Promise<Session | null> {
-  const cookieStore = await cookies();
+  const [cookieStore, requestHeaders] = await Promise.all([
+    cookies(),
+    headers(),
+  ]);
   return resolveDatabaseSession({
     hasSession: hasSessionCookie(cookieStore.getAll()),
     configured: getAuthAvailability().status === "ready",
     async read() {
       try {
         const { result: session, failed } = await trackAuthOperation(() =>
-          getServerSession(getAuthOptions()),
+          getServerSession(
+            getAuthOptions({
+              userAgent: requestHeaders.get("user-agent") || undefined,
+            }),
+          ),
         );
         return { session, failed };
       } catch (error) {

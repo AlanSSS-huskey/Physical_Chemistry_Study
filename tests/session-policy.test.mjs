@@ -252,6 +252,86 @@ test("remembered and browser sessions have fixed thirty-day and twelve-hour data
   }
 });
 
+test("Google-style adapter session creation records a bounded clean user agent and activity timestamps", async () => {
+  const store = sessionStore();
+  const adapter = createSessionPolicyAdapter(store.adapter, {
+    now: () => now,
+    userAgent: `Browser\r\n${"x".repeat(600)}`,
+  });
+  const session = await adapter.createSession({
+    sessionToken: createSessionToken(true),
+    userId: "test-user",
+    expires: new Date(now + 1),
+  });
+  assert.equal(session.createdAt.getTime(), now);
+  assert.equal(session.lastActiveAt.getTime(), now);
+  assert.equal(session.userAgent.length, 512);
+  assert.doesNotMatch(session.userAgent, /[\r\n]/);
+});
+
+test("ordinary valid session reads touch activity at most every minute without changing expiry", async () => {
+  let clock = now;
+  const store = sessionStore();
+  const touches = [];
+  const adapter = createSessionPolicyAdapter(store.adapter, {
+    now: () => clock,
+    async touchSession(token, at) {
+      touches.push(at);
+      store.rows.get(token).lastActiveAt = at;
+    },
+  });
+  const created = await adapter.createSession({
+    sessionToken: createSessionToken(false),
+    userId: "test-user",
+    expires: new Date(now + 1),
+  });
+  await adapter.getSessionAndUser(created.sessionToken);
+  clock += 59000;
+  await adapter.getSessionAndUser(created.sessionToken);
+  assert.equal(touches.length, 0);
+  clock += 1000;
+  await adapter.getSessionAndUser(created.sessionToken);
+  assert.equal(touches.length, 1);
+  clock += 59000;
+  await adapter.getSessionAndUser(created.sessionToken);
+  assert.equal(touches.length, 1);
+  clock += 1000;
+  await adapter.getSessionAndUser(created.sessionToken);
+  assert.equal(touches.length, 2);
+  assert.equal(
+    store.rows.get(created.sessionToken).expires.getTime(),
+    created.expires.getTime(),
+  );
+});
+
+test("legacy sessions missing activity metadata are touched but expired sessions are never touched", async () => {
+  const store = sessionStore();
+  const touches = [];
+  const adapter = createSessionPolicyAdapter(store.adapter, {
+    now: () => now,
+    userAgent: "Existing Browser",
+    async touchSession(token, at, userAgent) {
+      touches.push(token);
+      Object.assign(store.rows.get(token), { lastActiveAt: at, userAgent });
+    },
+  });
+  await store.adapter.createSession({
+    sessionToken: "legacy-session",
+    userId: "test-user",
+    expires: new Date(now + 1000000),
+  });
+  await adapter.getSessionAndUser("legacy-session");
+  assert.deepEqual(touches, ["legacy-session"]);
+  assert.equal(store.rows.get("legacy-session").userAgent, "Existing Browser");
+  await store.adapter.createSession({
+    sessionToken: "expired-session",
+    userId: "test-user",
+    expires: new Date(now),
+  });
+  assert.equal(await adapter.getSessionAndUser("expired-session"), null);
+  assert.deepEqual(touches, ["legacy-session"]);
+});
+
 test("later sign-in choices cannot change an existing session and legacy expiry is preserved", async () => {
   const store = sessionStore();
   const expires = new Date(now + 5 * 86400_000);

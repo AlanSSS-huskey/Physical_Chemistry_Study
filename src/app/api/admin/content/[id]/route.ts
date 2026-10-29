@@ -1,104 +1,89 @@
-import { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
-import { getAdminUserOrNull } from "@/lib/admin-access";
 import { isBundledContent } from "@/lib/content-service";
 import {
-  contentApiFailure,
-  isTrustedMutationRequest,
-  parseContentJson,
-  validateContentInput,
-} from "@/lib/content-validation";
+  ContentHistoryError,
+  deletePrivateDraft,
+  expectedRevision,
+  saveContentVersion,
+  trashContentVersion,
+  validateContentMutation,
+} from "@/lib/content-history";
+import {
+  adminContentActor,
+  contentMutationBody,
+  historyFailure,
+  historyResponse,
+} from "@/lib/content-history-http";
 
 type Context = { params: Promise<{ id: string }> };
-
+async function bundledContent(id: string, version: number) {
+  const content = await prisma.content.findUnique({
+    where: { id },
+    select: { slug: true, version: true },
+  });
+  if (!content) throw new ContentHistoryError("NOT_FOUND", 404);
+  if (content.version !== version)
+    throw new ContentHistoryError("VERSION_CONFLICT", 409);
+  return isBundledContent(content.slug);
+}
 export async function PUT(request: Request, context: Context) {
-  if (!isTrustedMutationRequest(request))
-    return Response.json(
-      { error: "Forbidden", code: "FORBIDDEN" },
-      { status: 403 },
-    );
   try {
-    const user = await getAdminUserOrNull();
-    if (!user)
-      return Response.json(
-        { error: "Forbidden", code: "FORBIDDEN" },
-        { status: 403 },
-      );
+    const actor = await adminContentActor();
+    const payload = validateContentMutation(await contentMutationBody(request));
     const { id } = await context.params;
-    const existing = await prisma.content.findUnique({ where: { id } });
-    if (!existing)
-      return Response.json(
-        { error: "Content not found", code: "NOT_FOUND" },
-        { status: 404 },
-      );
-    const input = validateContentInput(
-      await parseContentJson(request),
-      existing,
+    const bundled = await bundledContent(
+      id,
+      expectedRevision(payload.expectedVersion),
     );
-    if (input.slug !== existing.slug && (await isBundledContent(existing.slug)))
-      return Response.json(
-        {
-          error:
-            "Keep the original slug for a bundled lesson. Create a separate note to use a new slug.",
-          code: "BUNDLED_SLUG",
-        },
-        { status: 409 },
-      );
-    const { translations, ...fields } = input;
-    const updated = await prisma.content.update({
-      where: { id },
-      data: {
-        ...fields,
-        translations: translations
-          ? (translations as Prisma.InputJsonValue)
-          : Prisma.DbNull,
+    const content = await prisma.$transaction(
+      async (tx) => {
+        const updated = await saveContentVersion(
+          tx,
+          actor,
+          id,
+          payload,
+          bundled,
+        );
+        if (typeof payload.draftKey === "string")
+          await deletePrivateDraft(
+            tx,
+            actor,
+            payload.draftKey,
+            expectedRevision(payload.draftRevision),
+          );
+        return updated;
       },
-      select: { id: true, slug: true },
-    });
+      { isolationLevel: "Serializable", maxWait: 5000, timeout: 15000 },
+    );
     revalidatePath("/", "layout");
-    return Response.json(updated);
+    return historyResponse({
+      id: content.id,
+      slug: content.slug,
+      version: content.version,
+    });
   } catch (error) {
-    return contentApiFailure(error);
+    return historyFailure(error);
   }
 }
-
 export async function DELETE(request: Request, context: Context) {
-  if (!isTrustedMutationRequest(request))
-    return Response.json(
-      { error: "Forbidden", code: "FORBIDDEN" },
-      { status: 403 },
-    );
   try {
-    const user = await getAdminUserOrNull();
-    if (!user)
-      return Response.json(
-        { error: "Forbidden", code: "FORBIDDEN" },
-        { status: 403 },
-      );
+    const actor = await adminContentActor();
+    const payload = validateContentMutation(await contentMutationBody(request));
     const { id } = await context.params;
-    const existing = await prisma.content.findUnique({
-      where: { id },
-      select: { slug: true },
-    });
-    if (!existing)
-      return Response.json(
-        { error: "Content not found", code: "NOT_FOUND" },
-        { status: 404 },
-      );
-    if (await isBundledContent(existing.slug))
-      return Response.json(
-        {
-          error:
-            "Bundled lessons cannot be deleted. Unpublish this lesson in the editor.",
-          code: "BUNDLED_CONTENT",
-        },
-        { status: 409 },
-      );
-    await prisma.content.delete({ where: { id } });
+    const content = await prisma.$transaction(
+      (tx) =>
+        trashContentVersion(
+          tx,
+          actor,
+          id,
+          expectedRevision(payload.expectedVersion),
+        ),
+      { isolationLevel: "Serializable", maxWait: 5000, timeout: 15000 },
+    );
     revalidatePath("/", "layout");
-    return Response.json({ ok: true });
+    return historyResponse({ ok: true, version: content.version });
   } catch (error) {
-    return contentApiFailure(error);
+    return historyFailure(error);
   }
 }

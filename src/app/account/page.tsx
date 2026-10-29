@@ -60,7 +60,7 @@ export default async function AccountPage() {
           <div className="flex flex-wrap gap-3">
             {session.status === "anonymous" && (
               <Link className="button" href="/login?callbackUrl=%2Faccount">
-                {textFor(locale, "使用 Google 登录", "Sign in with Google")}
+                {textFor(locale, "登录我的账户", "Sign in to my account")}
               </Link>
             )}
             {session.status === "unavailable" && (
@@ -161,6 +161,12 @@ export default async function AccountPage() {
         {user.name && user.email && (
           <span className="muted text-sm">{user.email}</span>
         )}
+        <Link className="button-secondary" href="/account/library">
+          {textFor(locale, "收藏与私人笔记", "Bookmarks & private notes")}
+        </Link>
+        <Link className="button-secondary" href="/account/settings">
+          {textFor(locale, "账户设置", "Account settings")}
+        </Link>
       </div>
       <div className="grid gap-4 sm:grid-cols-3">
         {[

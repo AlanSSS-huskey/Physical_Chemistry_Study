@@ -4,6 +4,9 @@ import { loadLibrary } from "@/lib/content-service";
 import { ContentCard } from "@/components/ContentCard";
 import { ServiceNotice } from "@/components/ServiceNotice";
 import Link from "next/link";
+import { getSessionState } from "@/lib/auth";
+import { searchStudyLibrary } from "@/lib/search-service";
+import { SearchResultLink } from "@/components/SearchResultLink";
 
 export default async function NotesIndexPage({
   searchParams,
@@ -28,6 +31,25 @@ export default async function NotesIndexPage({
           .toLocaleLowerCase()
           .includes(q.toLocaleLowerCase())),
   );
+  let searchResult: Awaited<ReturnType<typeof searchStudyLibrary>> | null =
+    null;
+  let searchUnavailable = false;
+  if (q) {
+    try {
+      const session = await getSessionState();
+      if (session.status === "unavailable")
+        throw new Error("Search unavailable");
+      searchResult = await searchStudyLibrary(
+        q,
+        locale,
+        session.status === "authenticated" ? session.user.id : undefined,
+        subject,
+      );
+      if (!searchResult.databaseAvailable) searchUnavailable = true;
+    } catch {
+      searchUnavailable = true;
+    }
+  }
   return (
     <div className="space-y-8">
       <header className="page-intro">
@@ -54,8 +76,8 @@ export default async function NotesIndexPage({
           defaultValue={q}
           placeholder={textFor(
             locale,
-            "搜索标题或学科…",
-            "Search titles or subjects…",
+            "搜索中英文标题、概念或正文…",
+            "Search Chinese & English titles, concepts or text…",
           )}
           type="search"
           maxLength={200}
@@ -85,34 +107,72 @@ export default async function NotesIndexPage({
             : textFor(locale, "全部笔记", "All notes")}
         </h2>
         <span className="muted">
-          {filtered.length} {textFor(locale, "篇笔记", "notes")}
+          {q ? searchResult?.hits.length || 0 : filtered.length}{" "}
+          {textFor(locale, "篇笔记", "notes")}
         </span>
       </div>
-      <div className="content-grid">
-        {filtered.map((item, index) => (
-          <ContentCard
-            key={item.slug}
-            content={item}
-            locale={locale}
-            index={index}
-          />
-        ))}
-      </div>
-      {!filtered.length && (
-        <div className="empty-state panel">
-          <h2>{textFor(locale, "没有找到匹配的笔记", "No matching notes")}</h2>
-          <p className="muted">
-            {textFor(
-              locale,
-              "试试更短的关键词，或者浏览全部内容。",
-              "Try a shorter search, or browse the full collection.",
-            )}
-          </p>
-          <Link className="button-secondary" href="/notes">
-            {textFor(locale, "清除筛选", "Clear filters")}
-          </Link>
+      {q && searchUnavailable && (
+        <p className="notice" role="status">
+          {textFor(
+            locale,
+            "搜索服务未完整连接，以下结果可能不完整，请稍后重试。",
+            "Search is not fully connected. Results may be incomplete; please try again shortly.",
+          )}
+        </p>
+      )}
+      {q ? (
+        <div className="search-results">
+          {searchResult?.hits.map((hit) => (
+            <article className="search-result" key={hit.slug}>
+              <div className="search-result-meta">
+                <span>{hit.subjectTitle}</span>
+                <span className="badge">
+                  {hit.locale === "zh" ? "中文" : "English"}
+                </span>
+              </div>
+              <h3>
+                <SearchResultLink href={hit.href} locale={hit.locale}>
+                  {hit.title}
+                  <span aria-hidden="true"> ↗</span>
+                </SearchResultLink>
+              </h3>
+              <p>{hit.snippet}</p>
+              <span className="auth-hint">
+                {textFor(locale, "打开匹配的段落", "Open the matching section")}
+              </span>
+            </article>
+          ))}
+        </div>
+      ) : (
+        <div className="content-grid">
+          {filtered.map((item, index) => (
+            <ContentCard
+              key={item.slug}
+              content={item}
+              locale={locale}
+              index={index}
+            />
+          ))}
         </div>
       )}
+      {!(q ? searchResult?.hits.length || 0 : filtered.length) &&
+        !searchUnavailable && (
+          <div className="empty-state panel">
+            <h2>
+              {textFor(locale, "没有找到匹配的笔记", "No matching notes")}
+            </h2>
+            <p className="muted">
+              {textFor(
+                locale,
+                "试试更短的关键词，或者浏览全部内容。",
+                "Try a shorter search, or browse the full collection.",
+              )}
+            </p>
+            <Link className="button-secondary" href="/notes">
+              {textFor(locale, "清除筛选", "Clear filters")}
+            </Link>
+          </div>
+        )}
     </div>
   );
 }

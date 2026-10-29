@@ -6,6 +6,7 @@ import remarkRehype from "remark-rehype";
 import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
 import rehypeKatex from "rehype-katex";
 import rehypeStringify from "rehype-stringify";
+import { addHeadingAnchors } from "./heading-anchors.ts";
 
 export function normalizeMath(source: string): string {
   let fence: { marker: string; length: number } | null = null;
@@ -56,6 +57,7 @@ export async function renderMarkdown(source: string): Promise<string> {
         code: [["className", /^language-./, "math-inline", "math-display"]],
       },
     })
+    .use(addHeadingAnchors)
     .use(rehypeKatex, { trust: false, strict: "ignore" })
     .use(rehypeStringify)
     .process(normalizeMath(source));

@@ -7,66 +7,67 @@ import { usePathname } from "next/navigation";
 import { useLocale } from "@/components/LocaleProvider";
 import { textFor } from "@/lib/i18n";
 import { safeCallbackPath } from "@/lib/auth-config";
+import { RememberChoice } from "@/components/auth/AuthFields";
+import { requestStateNavigation } from "@/lib/navigation-guard";
 
 export function GoogleSignInButton({
   callbackUrl = "/account",
+  remember,
+  showRemember = remember === undefined,
+  disabled = false,
+  onPendingChange,
 }: {
   callbackUrl?: string;
+  remember?: boolean;
+  showRemember?: boolean;
+  disabled?: boolean;
+  onPendingChange?: (pending: boolean) => void;
 }) {
   const { locale } = useLocale();
   const [pending, setPending] = useState(false);
   const [failed, setFailed] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
+  const effectiveRemember = remember ?? rememberMe;
 
   async function login() {
     setPending(true);
+    onPendingChange?.(true);
     setFailed(false);
     try {
       await signIn("google", {
         callbackUrl: safeCallbackPath(callbackUrl),
-        remember: rememberMe ? "true" : "false",
+        remember: effectiveRemember ? "true" : "false",
       });
     } catch {
       setFailed(true);
     } finally {
       setPending(false);
+      onPendingChange?.(false);
     }
   }
 
   return (
     <div className="space-y-3">
-      <label className="flex cursor-pointer items-center gap-3 text-sm">
-        <input
-          type="checkbox"
-          className="h-4 w-4 accent-[var(--accent)]"
-          checked={rememberMe}
-          onChange={(event) => setRememberMe(event.target.checked)}
-          disabled={pending}
+      {showRemember && (
+        <RememberChoice
+          checked={effectiveRemember}
+          onChange={setRememberMe}
+          disabled={pending || disabled}
         />
-        <span>
-          {textFor(locale, "记住我（30 天）", "Remember me for 30 days")}
-        </span>
-      </label>
-      <p className="muted text-sm">
-        {rememberMe
-          ? textFor(
-              locale,
-              "在此设备保留登录状态，30 天后重新验证。请勿在共用设备上勾选。",
-              "Stay signed in on this device for 30 days. Leave this unchecked on shared devices.",
-            )
-          : textFor(
-              locale,
-              "仅保留当前浏览器会话，最长 12 小时。",
-              "Stay signed in for this browser session, for up to 12 hours.",
-            )}
-      </p>
+      )}
       <button
-        className="button"
+        className="button-secondary auth-google-button"
         type="button"
         onClick={login}
-        disabled={pending}
+        disabled={pending || disabled}
         aria-busy={pending}
       >
+        <svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true">
+          <path
+            fill="currentColor"
+            d="M19.2 10.2c0-.6-.1-1.2-.2-1.8H10v3.4h5.2c-.3 1.1-.9 2-1.9 2.6v2.2h3.1c1.8-1.7 2.8-4 2.8-6.4ZM10 19.5c2.6 0 4.8-.9 6.4-2.3l-3.1-2.4c-.8.5-1.9.9-3.3.9-2.5 0-4.6-1.7-5.4-4H1.4v2.4a9.5 9.5 0 0 0 8.6 5.4ZM4.6 11.7a5.7 5.7 0 0 1 0-3.4V5.9H1.4a9.5 9.5 0 0 0 0 8.2l3.2-2.4ZM10 4.3c1.5 0 2.7.5 3.7 1.5l2.8-2.8A9.2 9.2 0 0 0 10 .5a9.5 9.5 0 0 0-8.6 5.4l3.2 2.4c.8-2.3 2.9-4 5.4-4Z"
+          />
+        </svg>
         {pending
           ? textFor(locale, "正在前往 Google…", "Opening Google…")
           : textFor(locale, "使用 Google 登录", "Continue with Google")}
@@ -137,6 +138,7 @@ export function AuthNav({
     );
 
   async function logout() {
+    if (!requestStateNavigation(window)) return;
     setPending(true);
     setFailed(false);
     try {
@@ -150,8 +152,8 @@ export function AuthNav({
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <Link className="button-ghost text-sm" href="/account">
-        {textFor(locale, "学习记录", "My progress")}
+      <Link className="button-ghost text-sm" href="/account/settings">
+        {textFor(locale, "账户设置", "Account settings")}
       </Link>
       <button
         className="button-secondary text-sm"
