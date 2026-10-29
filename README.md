@@ -2,13 +2,13 @@
 
 中英文物理化学学习网站。使用 Next.js 15、React 19、Prisma 6、NextAuth 4 与 Supabase Postgres / Storage。
 
-新版已发布到[正式网站](https://physical-chemistry-study.vercel.app)。正式 Supabase 数据库已初始化，中英文课程、真实 Google 登录、30 天 Remember Me、12 小时浏览器会话、刷新保持及主动退出均已验证。104 项行为测试、lint、类型检查、生产构建和格式检查通过。详见[登录与发布记录](docs/verification/2026-10-28-login-release.md)。
+新版已发布到[正式网站](https://physical-chemistry-study.vercel.app)。中英文账户、阅读同步、收藏笔记、正文搜索、后台恢复和账户数据管理已上线。205 项自动测试及 51 项正式站检查通过，既有账户与会话保留。真实发信仍待配置。详见[本次正式发布记录](docs/verification/2026-10-29-production-release.md)与[功能开启指南](docs/setup/feature-activation.md)。
 
 ## 当前实现
 
 `codex/study-workspace` 新增阅读同步、私人笔记、正文搜索、后台恢复和账户数据管理。
-本轮代码尚未发布到正式网站；实际检查与外部配置限制见
-[学习空间验收记录](docs/verification/2026-10-29-study-workspace.md)。
+本轮代码及第六项数据库迁移已发布；实际检查与外部配置限制见
+[正式发布记录](docs/verification/2026-10-29-production-release.md)。
 
 - 读到哪里、字号、行距与阅读主题自动同步；保存失败和多设备冲突明确提示。
 - 个人收藏、分语言的私人笔记与最近阅读；失去章节权限后仍保留自己的完整笔记。

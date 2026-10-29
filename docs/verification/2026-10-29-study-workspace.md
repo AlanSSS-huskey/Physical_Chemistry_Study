@@ -1,5 +1,7 @@
 # 学习空间功能验收 / Study workspace verification
 
+后续状态：所有者已明确授权，本轮迁移和正式发布已完成。以下保留发布前的验收记录；当前结果见[正式发布记录](2026-10-29-production-release.md)。
+
 Date: 2026-10-29. Branch: `codex/study-workspace`, based on the existing
 `codex/account-auth` implementation. This report describes tested source, not a
 claim that the changes are already on the public production site.

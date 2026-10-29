@@ -4,6 +4,11 @@ User-approved scope: bilingual automatic reading-state/preferences sync, bookmar
 and private chapter notes, bilingual full-text search, admin automatic drafts /
 version recovery / trash, and account export / safe email change / deletion.
 
+Release update (2026-10-29): the owner explicitly authorized production publication.
+The sixth migration and production deployment completed, preserving existing
+identities and sessions. Earlier release restrictions below describe planning-time
+state; see the production-release record for the completed authorization and checks.
+
 ## Boundaries
 
 - Reuse the existing NextAuth database sessions and signed account CSRF helper.

@@ -69,5 +69,7 @@ the verified application database before deploying this code.
 
 Real email delivery requires an owned sender domain and Resend setup. No test
 capture, fake provider key, test inbox or development deletion endpoint ships in
-the app. Follow the separate email and admin-recovery runbooks. Production
-publishing and anonymous preview sharing require the outstanding release approval.
+the app. Follow the separate email and admin-recovery runbooks. The owner authorized
+this production release and migration on 2026-10-29; both completed successfully.
+Preview deployments retain their existing access restrictions. See the production
+release record and feature-activation guide for the current status.
