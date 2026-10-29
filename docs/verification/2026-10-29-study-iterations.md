@@ -51,6 +51,36 @@ canceling an oversized upload. The server stayed healthy. The isolated harness
 disabled connection reuse for those adversarial requests; the complete suite then
 passed. Application code was not changed for that harness behavior.
 
+## Final browser and build checks
+
+The final production build passed. In the browser, Chinese and English results
+opened the correct article language and heading, including a language change
+within the same chapter. Command K, Escape, focus return, forward/backward Tab
+wrapping, and the empty-search message were verified.
+
+The outline's native anchor offset initially added heading margin to the root's
+existing scroll padding. Aligning their combined offset with the active marker
+fixed the observed mismatch; the final clicked section was then confirmed active
+in a fresh build. Formula/footnote labels and true document-end selection have
+dedicated regression tests.
+
+Private search for a literal percent sign showed exactly the matching owned note
+and left the browser address at `/account/library`. A real file-picker upload
+loaded a synthetic backup. The preview displayed original text, a cross-account
+source warning, one new note, one conflict, and one new bookmark, with keeping
+existing text selected and confirmation initially disabled. Confirming produced
+one created note, zero updated notes, one skipped conflict, and one added bookmark.
+
+An earlier Chrome file-picker automation call stalled despite its requested
+timeout. A bounded retry in the in-app browser completed the upload; the import
+preview and confirmation were then verified there. No application workaround was
+needed.
+
+Read-only preservation checks confirmed production/planner definitions and
+privileges, independent development data, and production account totals were
+unchanged. A concurrent planner state change was observed from the other
+application; this work neither wrote nor rolled it back.
+
 ## Activation
 
 Use the existing [feature activation guide](../setup/feature-activation.md).
