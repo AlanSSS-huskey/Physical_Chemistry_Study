@@ -8,6 +8,7 @@ import { useLocale } from "@/components/LocaleProvider";
 import { textFor } from "@/lib/i18n";
 import { safeCallbackPath } from "@/lib/auth-config";
 import { RememberChoice } from "@/components/auth/AuthFields";
+import { requestStateNavigation } from "@/lib/navigation-guard";
 
 export function GoogleSignInButton({
   callbackUrl = "/account",
@@ -137,6 +138,7 @@ export function AuthNav({
     );
 
   async function logout() {
+    if (!requestStateNavigation(window)) return;
     setPending(true);
     setFailed(false);
     try {

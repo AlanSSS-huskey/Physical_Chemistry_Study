@@ -99,6 +99,21 @@ export function LoginForm({
         </p>
       ) : (
         <>
+          {capabilities.googlePreviewUnavailable && (
+            <p className="notice" role="status">
+              {t(
+                "当前预览地址尚未配置 Google 授权。可使用已有邮箱密码测试；Google 登录请前往",
+                "Google authorization is not configured for this preview. Test with an existing email and password, or use Google on the ",
+              )}{" "}
+              <a
+                className="text-link"
+                href="https://physical-chemistry-study.vercel.app/login"
+              >
+                {t("正式网站", "live website")}
+              </a>
+              。
+            </p>
+          )}
           {!capabilities.passwordLogin && !capabilities.google && (
             <AuthFeedback
               message={t(

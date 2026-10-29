@@ -6,6 +6,7 @@ import { useTransition } from "react";
 import { AuthNav } from "@/components/AuthNav";
 import { useLocale } from "@/components/LocaleProvider";
 import { LOCALE_COOKIE, textFor, type Locale } from "@/lib/i18n";
+import { requestStateNavigation } from "@/lib/navigation-guard";
 
 export function SiteHeader({
   authConfigured,
@@ -25,6 +26,7 @@ export function SiteHeader({
   ];
   function changeLocale(next: Locale) {
     if (next === locale) return;
+    if (!requestStateNavigation(window)) return;
     document.cookie = `${LOCALE_COOKIE}=${next}; Path=/; Max-Age=31536000; SameSite=Lax${location.protocol === "https:" ? "; Secure" : ""}`;
     startTransition(() => router.refresh());
   }

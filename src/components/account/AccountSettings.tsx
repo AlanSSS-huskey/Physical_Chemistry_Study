@@ -13,6 +13,7 @@ import { AuthFeedback } from "@/components/auth/AuthFields";
 import { ProfileSettings } from "./ProfileSettings";
 import { SecuritySettings } from "./SecuritySettings";
 import { SessionSettings } from "./SessionSettings";
+import { AccountDataSettings } from "./AccountDataSettings";
 import type { AccountProfile } from "./account-types";
 
 export function AccountSettings() {
@@ -21,6 +22,9 @@ export function AccountSettings() {
   const [profile, setProfile] = useState<AccountProfile | null>(null);
   const [error, setError] = useState<unknown>(null);
   const [attempt, setAttempt] = useState(0);
+  const [deleted, setDeleted] = useState<{ cleanupPending: boolean } | null>(
+    null,
+  );
   useEffect(() => {
     const controller = new AbortController();
     setError(null);
@@ -33,6 +37,32 @@ export function AccountSettings() {
       });
     return () => controller.abort();
   }, [attempt]);
+  if (deleted)
+    return (
+      <section className="panel auth-stack p-8">
+        <h1 className="page-heading">
+          {t("账户已注销", "Your account has been deleted")}
+        </h1>
+        <AuthFeedback
+          success
+          message={t(
+            "私人学习记录和登录会话已删除。公开文章配图会继续保留。",
+            "Private study records and sign-in sessions have been removed. Public article illustrations remain available.",
+          )}
+        />
+        {deleted.cleanupPending && (
+          <p className="notice">
+            {t(
+              "头像文件已加入清理队列，等待管理员完成剩余清理。",
+              "Avatar files are queued for the administrator to finish cleanup.",
+            )}
+          </p>
+        )}
+        <Link className="button" href="/">
+          {t("返回首页", "Return home")}
+        </Link>
+      </section>
+    );
   return (
     <div className="account-settings">
       <header className="account-page-heading">
@@ -91,6 +121,7 @@ export function AccountSettings() {
             <a href="#profile">{t("个人资料", "Profile")}</a>
             <a href="#security">{t("账户安全", "Security")}</a>
             <a href="#sessions">{t("登录设备", "Sessions")}</a>
+            <a href="#data">{t("数据与邮箱", "Data & email")}</a>
           </nav>
           <ProfileSettings
             profile={profile}
@@ -102,6 +133,10 @@ export function AccountSettings() {
           />
           <SecuritySettings profile={profile} />
           <SessionSettings />
+          <AccountDataSettings
+            profile={profile}
+            onDeleted={(cleanupPending) => setDeleted({ cleanupPending })}
+          />
         </>
       )}
     </div>

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import "./globals.css";
+import "@/components/study/study.css";
 import "katex/dist/katex.min.css";
 import { Providers } from "@/app/providers";
 import { SiteHeader } from "@/components/SiteHeader";

@@ -44,7 +44,9 @@ export async function POST(request: Request) {
       },
       async (metadata) =>
         prisma.$transaction(async (tx) => {
-          await tx.imageAsset.create({ data: metadata });
+          await tx.imageAsset.create({
+            data: { ...metadata, purpose: "AVATAR" },
+          });
           return tx.user.update({
             where: { id: session.userId },
             data: { image: metadata.url },

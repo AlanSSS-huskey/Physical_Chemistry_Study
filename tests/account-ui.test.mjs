@@ -107,3 +107,32 @@ test("avatar uploads leave multipart content type to the browser", async () => {
   assert.equal(upload.headers.has("Content-Type"), false);
   assert.equal(upload.body, body);
 });
+
+test("account data requests bind reads and mutations to the identity rendered in the panel", async () => {
+  const observed = [];
+  const fetcher = async (url, init) => {
+    observed.push({ url, init });
+    return Response.json(
+      url.endsWith("/csrf") ? { csrfToken: "test-csrf" } : { ok: true },
+    );
+  };
+  await accountRequest("/api/account/data", {
+    accountUserId: "rendered-owner",
+    fetcher,
+  });
+  await accountRequest("/api/account/delete", {
+    method: "POST",
+    accountUserId: "rendered-owner",
+    body: { confirmation: "DELETE" },
+    fetcher,
+  });
+  assert.equal(
+    observed[0].init.headers.get("X-Account-User"),
+    "rendered-owner",
+  );
+  assert.equal(
+    observed[2].init.headers.get("X-Account-User"),
+    "rendered-owner",
+  );
+  assert.equal(observed[2].init.headers.get("X-CSRF-Token"), "test-csrf");
+});

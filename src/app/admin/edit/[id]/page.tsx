@@ -5,6 +5,8 @@ import { requireAdminUser } from "@/lib/admin-access";
 import { AdminContentEditor } from "@/components/AdminContentEditor";
 import { contentHref, formatDate, textFor } from "@/lib/i18n";
 import { getLocale } from "@/lib/locale-server";
+import { AdminRestoreButton } from "@/components/admin/AdminRestoreButton";
+import { ContentHistoryPanel } from "@/components/admin/ContentHistoryPanel";
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -15,12 +17,12 @@ export default async function AdminEditPage({ params, searchParams }: Props) {
   const locale = await getLocale();
   const t = (zh: string, en: string) => textFor(locale, zh, en);
   try {
-    await requireAdminUser();
+    const admin = await requireAdminUser();
     const [{ id }, query] = await Promise.all([params, searchParams]);
     const isNew = id === "new";
     const [modules, content] = await Promise.all([
       prisma.content.findMany({
-        where: { module: { not: null } },
+        where: { module: { not: null }, deletedAt: null },
         select: { module: true },
         distinct: ["module"],
         orderBy: { module: "asc" },
@@ -42,6 +44,8 @@ export default async function AdminEditPage({ params, searchParams }: Props) {
               subjectSlug: true,
               chapterSlug: true,
               order: true,
+              version: true,
+              deletedAt: true,
             },
           }),
     ]);
@@ -94,21 +98,48 @@ export default async function AdminEditPage({ params, searchParams }: Props) {
           </div>
         )}
         <div className="panel p-4 sm:p-6">
-          <AdminContentEditor
-            key={content?.id ?? "new"}
-            contentId={content?.id}
-            initialTitle={content?.title ?? ""}
-            initialSlug={content?.slug ?? ""}
-            initialModule={content?.module ?? ""}
-            initialBody={content?.body ?? ""}
-            initialTranslations={content?.translations}
-            initialIsPublic={content?.isPublic ?? true}
-            initialIsPublished={content?.isPublished ?? false}
-            initialSubjectSlug={content?.subjectSlug ?? ""}
-            initialChapterSlug={content?.chapterSlug ?? ""}
-            initialOrder={content?.order ?? 0}
-            moduleOptions={moduleOptions}
-          />
+          {content?.deletedAt ? (
+            <div className="space-y-4">
+              <div className="notice">
+                <h2 className="font-semibold">
+                  {t("文章位于回收站", "This article is in the trash")}
+                </h2>
+                <p className="mt-2 text-sm">
+                  {t(
+                    "文章和两种语言都已保留。恢复后为未发布草稿，请检查后重新发布。",
+                    "The article and both languages have been kept. Restore it as an unpublished draft, then review before publishing.",
+                  )}
+                </p>
+              </div>
+              <AdminRestoreButton
+                id={content.id}
+                version={content.version}
+                title={content.title}
+              />
+              <ContentHistoryPanel
+                contentId={content.id}
+                version={content.version}
+              />
+            </div>
+          ) : (
+            <AdminContentEditor
+              adminUserId={admin.id}
+              key={content ? `${content.id}:${content.version}` : "new"}
+              contentId={content?.id}
+              initialTitle={content?.title ?? ""}
+              initialSlug={content?.slug ?? ""}
+              initialModule={content?.module ?? ""}
+              initialBody={content?.body ?? ""}
+              initialTranslations={content?.translations}
+              initialIsPublic={content?.isPublic ?? true}
+              initialIsPublished={content?.isPublished ?? false}
+              initialSubjectSlug={content?.subjectSlug ?? ""}
+              initialChapterSlug={content?.chapterSlug ?? ""}
+              initialOrder={content?.order ?? 0}
+              initialVersion={content?.version ?? 1}
+              moduleOptions={moduleOptions}
+            />
+          )}
         </div>
       </div>
     );

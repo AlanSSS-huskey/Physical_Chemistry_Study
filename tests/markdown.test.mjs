@@ -6,7 +6,7 @@ test("legacy mathematical delimiters render alongside standard Markdown math", a
   const html = await renderMarkdown(
     "# Energy\n\n\\(PV = nRT\\)\n\n\\[\nH = U + PV\n\\]",
   );
-  assert.match(html, /<h1>Energy<\/h1>/);
+  assert.match(html, /<h1 id="section-energy">Energy<\/h1>/);
   assert.match(html, /class="katex"/);
   assert.match(html, /katex-display/);
 });

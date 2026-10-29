@@ -1253,6 +1253,39 @@ html[lang="en"] .hero-copy h1 em {
 }
 
 /* Account access and settings share the study workspace's academic palette. */
+.search-results {
+  display: grid;
+  gap: 1.25rem;
+}
+.search-result {
+  padding: 1.5rem;
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  background: var(--surface);
+  overflow-wrap: anywhere;
+}
+.search-result-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+.search-result h3 {
+  margin: 0.75rem 0;
+  color: var(--ink);
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+.search-result h3 a:hover {
+  color: var(--accent);
+}
+.search-result p {
+  line-height: 1.9;
+  margin-bottom: 0.75rem;
+  color: var(--muted);
+}
 .auth-workspace {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr);

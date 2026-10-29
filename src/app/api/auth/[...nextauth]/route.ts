@@ -7,7 +7,8 @@ import {
   logAuthFailure,
   trackAuthOperation,
 } from "@/lib/auth";
-import { hasSessionCookie } from "@/lib/auth-config";
+import { googlePreviewPolicy, hasSessionCookie } from "@/lib/auth-config";
+import { accountRequestOrigin } from "@/lib/account-security";
 import {
   applySessionCookiePolicy,
   googleOAuthState,
@@ -46,6 +47,18 @@ async function handleAuth(
     req.method === "POST" &&
     params.nextauth[0] === "signin" &&
     params.nextauth[1] === "google";
+  if (
+    (isSignIn || (isCallback && params.nextauth[1] === "google")) &&
+    !googlePreviewPolicy(process.env, accountRequestOrigin(req)).allowed
+  ) {
+    const url = new URL("/login?error=preview-google", req.url);
+    return req.method === "GET"
+      ? Response.redirect(url, 303)
+      : Response.json(
+          { url: url.href },
+          { status: 409, headers: { "Cache-Control": "no-store" } },
+        );
+  }
   const secureCookies =
     new URL(process.env.NEXTAUTH_URL || req.url).protocol === "https:";
   const clearPreference = (response: Response) =>

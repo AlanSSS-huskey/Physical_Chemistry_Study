@@ -8,6 +8,7 @@ import {
   accountFailure,
   accountCsrfResponse,
   getAccountMutation,
+  accountRequestOrigin,
 } from "@/lib/account-security";
 import {
   createAccountSession,
@@ -33,11 +34,13 @@ export async function GET(
     if (action === "csrf") return accountCsrfResponse(request);
     if (action === "capabilities") {
       const ready = getAuthAvailability().status === "ready";
+      const google = getGoogleOAuthConfig(accountRequestOrigin(request));
       return ok({
         passwordLogin: ready,
         registration: ready && accountMailReady(),
         mail: accountMailReady(),
-        google: ready && getGoogleOAuthConfig().configured,
+        google: ready && google.configured,
+        googlePreviewUnavailable: google.previewUnavailable,
       });
     }
     throw new AccountError("NOT_FOUND", 404);

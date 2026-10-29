@@ -13,6 +13,8 @@ function database() {
       "emailActionToken",
       "authRateLimit",
       "session",
+      "emailChangeRequest",
+      "accountDeletionRequest",
     ].map((name) => [name, []]),
   );
   let sequence = 0;
@@ -187,6 +189,8 @@ test("password change rotates the current session without extending it and revok
   await db.session.create({
     data: { sessionToken: "other-device", userId: user.id, expires },
   });
+  await db.emailChangeRequest.create({ data: { userId: user.id } });
+  await db.accountDeletionRequest.create({ data: { userId: user.id } });
   const changed = await service.changePassword(
     { currentPassword: password, password: "new long owner password" },
     user.id,
@@ -196,6 +200,8 @@ test("password change rotates the current session without extending it and revok
   assert.equal(tables.session.length, 1);
   assert.notEqual(changed.sessionToken, "legacy-current");
   assert.equal(changed.expires.getTime(), expires.getTime());
+  assert.equal(tables.emailChangeRequest.length, 0);
+  assert.equal(tables.accountDeletionRequest.length, 0);
   assert.equal(
     (
       await service.login(
@@ -228,8 +234,12 @@ test("reset tokens expire, can be consumed once and revoke every existing sessio
   );
   await service.forgotPassword({ email: "person@example.com" }, request);
   const token = messages.at(-1).token;
+  await db.emailChangeRequest.create({ data: { userId: "google-user" } });
+  await db.accountDeletionRequest.create({ data: { userId: "google-user" } });
   await service.resetPassword({ token, password }, request);
   assert.equal(tables.session.length, 0);
+  assert.equal(tables.emailChangeRequest.length, 0);
+  assert.equal(tables.accountDeletionRequest.length, 0);
   await assert.rejects(
     () => service.resetPassword({ token, password }, request),
     { code: "TOKEN_INVALID" },

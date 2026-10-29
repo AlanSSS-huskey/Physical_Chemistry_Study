@@ -9,6 +9,7 @@ import { prisma } from "@/lib/db";
 import {
   AuthenticationUnavailableError,
   authConfiguration,
+  googlePreviewPolicy,
   hasSessionCookie,
   hasValidDatabaseUrl,
   resolveDatabaseSession,
@@ -36,7 +37,7 @@ export async function trackAuthOperation<T>(
   }));
 }
 
-export function getGoogleOAuthConfig() {
+export function getGoogleOAuthConfig(requestOrigin?: string) {
   const clientId =
     process.env.GOOGLE_CLIENT_ID?.trim() ||
     process.env.AUTH_GOOGLE_ID?.trim() ||
@@ -46,11 +47,15 @@ export function getGoogleOAuthConfig() {
     process.env.AUTH_GOOGLE_SECRET?.trim() ||
     "";
   const disabled = process.env.DISABLE_GOOGLE_LOGIN === "true";
+  const previewUnavailable = !googlePreviewPolicy(process.env, requestOrigin)
+    .allowed;
   return {
     clientId,
     clientSecret,
     disabled,
-    configured: !disabled && Boolean(clientId && clientSecret),
+    previewUnavailable,
+    configured:
+      !disabled && !previewUnavailable && Boolean(clientId && clientSecret),
   };
 }
 

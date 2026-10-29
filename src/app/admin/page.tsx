@@ -20,9 +20,10 @@ export default async function AdminPage({ searchParams }: Props) {
   const locale = await getLocale();
   const t = (zh: string, en: string) => textFor(locale, zh, en);
   try {
-    await requireAdminUser();
-    const [items, query] = await Promise.all([
+    const user = await requireAdminUser();
+    const [items, query, drafts, trashCount] = await Promise.all([
       prisma.content.findMany({
+        where: { deletedAt: null },
         orderBy: { updatedAt: "desc" },
         select: {
           id: true,
@@ -35,9 +36,20 @@ export default async function AdminPage({ searchParams }: Props) {
           isPublic: true,
           subjectSlug: true,
           chapterSlug: true,
+          version: true,
         },
       }),
       searchParams,
+      prisma.contentDraft.findMany({
+        where: {
+          userId: user.id,
+          OR: [{ contentId: null }, { content: { deletedAt: null } }],
+        },
+        orderBy: { updatedAt: "desc" },
+        take: 20,
+        select: { id: true, contentId: true, payload: true, updatedAt: true },
+      }),
+      prisma.content.count({ where: { deletedAt: { not: null } } }),
     ]);
     const rawSearch = typeof query?.q === "string" ? query.q : "";
     const search = rawSearch.trim().toLocaleLowerCase();
@@ -91,6 +103,9 @@ export default async function AdminPage({ searchParams }: Props) {
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
+            <Link href="/admin/trash" className="button-secondary">
+              {t(`回收站 (${trashCount})`, `Trash (${trashCount})`)}
+            </Link>
             <Link href="/admin/images" className="button-secondary">
               {t("媒体库", "Media library")}
             </Link>
@@ -99,6 +114,57 @@ export default async function AdminPage({ searchParams }: Props) {
             </Link>
           </div>
         </div>
+        {drafts.length > 0 && (
+          <section className="panel p-5" aria-labelledby="private-drafts-title">
+            <h2 id="private-drafts-title" className="section-heading">
+              {t("你的自动草稿", "Your automatic drafts")}
+            </h2>
+            <p className="mt-2 text-sm muted">
+              {t(
+                "仅你可见的未完成编辑，尚未写入文章。",
+                "Unfinished edits visible only to you. These have not changed the articles.",
+              )}
+            </p>
+            <ul className="mt-3 divide-y divide-[var(--border)]">
+              {drafts.map((draft) => {
+                const payload =
+                  draft.payload &&
+                  typeof draft.payload === "object" &&
+                  !Array.isArray(draft.payload)
+                    ? (draft.payload as Record<string, unknown>)
+                    : {};
+                const translations = readTranslationDrafts(
+                  "",
+                  "",
+                  payload.translations,
+                );
+                const title =
+                  translations[locale].title ||
+                  translations[locale === "zh" ? "en" : "zh"].title ||
+                  t("未命名文章", "Untitled article");
+                return (
+                  <li
+                    key={draft.id}
+                    className="flex flex-wrap items-center justify-between gap-3 py-3"
+                  >
+                    <Link
+                      className="font-semibold text-sm hover:text-[var(--accent)] break-words"
+                      href={`/admin/edit/${encodeURIComponent(draft.contentId ?? "new")}`}
+                    >
+                      {title}
+                    </Link>
+                    <time
+                      className="text-xs muted"
+                      dateTime={draft.updatedAt.toISOString()}
+                    >
+                      {formatDate(draft.updatedAt, locale)}
+                    </time>
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
+        )}
         {query?.deleted === "1" && (
           <p className="notice" role="status">
             {t(
@@ -274,6 +340,7 @@ export default async function AdminPage({ searchParams }: Props) {
                       endpoint={`/api/admin/content/${encodeURIComponent(item.id)}`}
                       title={item.title}
                       kind="content"
+                      expectedVersion={item.version}
                     />
                   </div>
                 </li>

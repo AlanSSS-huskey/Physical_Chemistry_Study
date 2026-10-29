@@ -360,6 +360,10 @@ export function createEmailAuthService(options: Options) {
         });
         await tx.session.deleteMany({ where: { userId: user.id } });
         await tx.emailActionToken.deleteMany({ where: { userId: user.id } });
+        await tx.emailChangeRequest.deleteMany({ where: { userId: user.id } });
+        await tx.accountDeletionRequest.deleteMany({
+          where: { userId: user.id },
+        });
         await tx.pendingRegistration.deleteMany({
           where: { emailCanonical: token.emailCanonical },
         });
@@ -404,6 +408,8 @@ export function createEmailAuthService(options: Options) {
           where: { userId, sessionToken: { not: sessionToken } },
         });
         await tx.emailActionToken.deleteMany({ where: { userId } });
+        await tx.emailChangeRequest.deleteMany({ where: { userId } });
+        await tx.accountDeletionRequest.deleteMany({ where: { userId } });
         return tx.session.update({
           where: { id: session.id },
           data: {

@@ -29,11 +29,19 @@ export async function accountRequest<T = { ok: true }>(
     body?: Record<string, unknown> | FormData;
     signal?: AbortSignal;
     fetcher?: typeof fetch;
+    accountUserId?: string;
   } = {},
 ): Promise<T> {
-  const { method = "GET", body, signal, fetcher = fetch } = options;
+  const {
+    method = "GET",
+    body,
+    signal,
+    fetcher = fetch,
+    accountUserId,
+  } = options;
   try {
     const headers = new Headers();
+    if (accountUserId) headers.set("X-Account-User", accountUserId);
     if (method !== "GET") {
       const csrfResponse = await fetcher("/api/account/csrf", {
         credentials: "same-origin",
@@ -107,8 +115,44 @@ const messages: Record<string, [string, string]> = {
     "This link has expired. Request a new email link.",
   ],
   MAIL_UNAVAILABLE: [
-    "邮件服务暂时不可用，邮件尚未发送。请稍后重试。",
-    "Email delivery is temporarily unavailable. No email has been sent. Please try again shortly.",
+    "邮件发送暂时未能确认，请稍后重试。若收到旧链接，请以最新申请为准。",
+    "Email delivery could not be confirmed. Please try again shortly and use the newest requested link.",
+  ],
+  MAIL_PARTIAL: [
+    "部分确认邮件可能已经送达，但本次链接已失效。请重新申请，并使用最新两封邮件。",
+    "One confirmation email may have arrived, but this request has been cancelled. Request again and use the newest two emails.",
+  ],
+  EMAIL_UNAVAILABLE: [
+    "该邮箱暂时不能用于此账户，请更换邮箱后重试。",
+    "This email cannot be used for this account. Choose another address.",
+  ],
+  EMAIL_UNCHANGED: [
+    "请输入与当前账户不同的新邮箱。",
+    "Enter an email different from your current account email.",
+  ],
+  EMAIL_REQUIRED: [
+    "此账户没有可确认的邮箱，请先联系网站负责人。",
+    "This account has no email to confirm. Contact the site owner first.",
+  ],
+  REQUEST_REPLACED: [
+    "此申请已被后续操作替代，请从账户设置重新发起。",
+    "A later action replaced this request. Start again from account settings.",
+  ],
+  REAUTH_REQUIRED: [
+    "账户安全设置已变化，请重新登录并再次确认。",
+    "Account security settings changed. Sign in again and confirm the action.",
+  ],
+  SESSION_CHANGED: [
+    "登录账户已变化。请重新打开账户设置，核对当前账户后再操作。",
+    "Your signed-in account changed. Reopen account settings and review the current account before continuing.",
+  ],
+  CONFIRMATION_REQUIRED: [
+    "请阅读操作说明并明确确认后继续。",
+    "Review the action and explicitly confirm before continuing.",
+  ],
+  LAST_ADMIN: [
+    "最后一位管理员不能注销。请先安排另一位管理员管理网站。",
+    "The last administrator cannot delete their account. Arrange another site administrator first.",
   ],
   VALIDATION_ERROR: [
     "请检查填写内容后重试。",

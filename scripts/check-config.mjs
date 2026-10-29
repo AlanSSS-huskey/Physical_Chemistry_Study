@@ -39,6 +39,15 @@ const required = [
   "PendingRegistration",
   "EmailActionToken",
   "AuthRateLimit",
+  "StudyPreference",
+  "ReadingPosition",
+  "Bookmark",
+  "PersonalNote",
+  "ContentDraft",
+  "ContentRevision",
+  "EmailChangeRequest",
+  "AccountDeletionRequest",
+  "StorageDeletion",
 ];
 
 console.log(

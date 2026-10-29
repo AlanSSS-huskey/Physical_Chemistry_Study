@@ -45,7 +45,7 @@ export async function MarkCompleteForm({
           className="underline"
           href={`/login?callbackUrl=${encodeURIComponent(contentHref(contentSlug))}`}
         >
-          {textFor(locale, "使用 Google 登录", "Sign in with Google")}
+          {textFor(locale, "登录并保存进度", "Sign in to save progress")}
         </Link>
       </div>
     );

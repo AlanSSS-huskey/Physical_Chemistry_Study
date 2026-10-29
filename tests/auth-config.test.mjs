@@ -6,6 +6,7 @@ import {
   safeCallbackPath,
   resolveDatabaseSession,
   AuthenticationUnavailableError,
+  googlePreviewPolicy,
 } from "../src/lib/auth-config.ts";
 
 const ready = {
@@ -14,6 +15,45 @@ const ready = {
   GOOGLE_CLIENT_SECRET: "test-secret",
   NEXTAUTH_SECRET: "test-session-secret",
 };
+
+test("Google preview OAuth requires an explicit registered stable HTTPS origin", () => {
+  assert.equal(googlePreviewPolicy({ VERCEL_ENV: "production" }).allowed, true);
+  assert.equal(
+    googlePreviewPolicy({ NEXTAUTH_URL: "http://localhost:3000" }).allowed,
+    true,
+  );
+  const preview = {
+    VERCEL_ENV: "preview",
+    NEXTAUTH_URL: "https://study-branch.vercel.app",
+  };
+  assert.equal(googlePreviewPolicy(preview).allowed, false);
+  for (const value of [
+    "https://other.vercel.app",
+    "http://study-branch.vercel.app",
+    "https://study-branch.vercel.app/callback",
+    "https://user:password@study-branch.vercel.app",
+    "invalid",
+  ]) {
+    assert.equal(
+      googlePreviewPolicy({ ...preview, GOOGLE_PREVIEW_ORIGIN: value }).allowed,
+      false,
+    );
+  }
+  assert.equal(
+    googlePreviewPolicy({
+      ...preview,
+      GOOGLE_PREVIEW_ORIGIN: preview.NEXTAUTH_URL,
+    }).allowed,
+    true,
+  );
+  assert.equal(
+    googlePreviewPolicy(
+      { ...preview, GOOGLE_PREVIEW_ORIGIN: preview.NEXTAUTH_URL },
+      "https://random-deployment.vercel.app",
+    ).allowed,
+    false,
+  );
+});
 
 test("authentication requires database sessions and never falls back to JWT", () => {
   assert.equal(authConfiguration(ready).status, "ready");

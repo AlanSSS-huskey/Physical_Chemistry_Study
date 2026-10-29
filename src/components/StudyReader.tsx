@@ -11,6 +11,7 @@ import { MarkCompleteForm } from "@/components/MarkCompleteForm";
 import { ServiceNotice } from "@/components/ServiceNotice";
 import { isContentSlug } from "@/lib/content-validation";
 import { contentLookupOutcome } from "@/lib/reading-state";
+import { StudyWorkspace } from "@/components/study/StudyWorkspace";
 
 export async function StudyReader({ slug }: { slug: string }) {
   if (!isContentSlug(slug)) notFound();
@@ -206,7 +207,19 @@ export async function StudyReader({ slug }: { slug: string }) {
             </Link>
           </div>
         )}
-        <div lang={content.sourceLocale === "zh" ? "zh-CN" : "en"}>
+        <StudyWorkspace
+          key={`${session.status === "authenticated" ? session.user.id : "anonymous"}:${content.slug}:${content.sourceLocale}`}
+          slug={content.slug}
+          locale={content.sourceLocale}
+          authenticatedUserId={
+            session.status === "authenticated" ? session.user.id : undefined
+          }
+          canRead={access === "full"}
+        />
+        <div
+          data-study-body
+          lang={content.sourceLocale === "zh" ? "zh-CN" : "en"}
+        >
           <MdxRenderer source={body} />
         </div>
         {access === "full" && (

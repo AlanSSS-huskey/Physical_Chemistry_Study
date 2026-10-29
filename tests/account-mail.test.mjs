@@ -82,3 +82,37 @@ test("neutral account help contains only public entry links and no action token"
     /#token=|account does not exist|not registered/i,
   );
 });
+test("account data proofs use dedicated fragment links and explicit-confirmation instructions", async () => {
+  for (const purpose of [
+    "EMAIL_CHANGE_OLD",
+    "EMAIL_CHANGE_NEW",
+    "ACCOUNT_DELETE",
+  ]) {
+    let sent;
+    await sendAccountMail(
+      {
+        to: "owner@example.com",
+        purpose,
+        token: "private_test_proof",
+        locale: "en",
+      },
+      {
+        RESEND_API_KEY: "test-key",
+        EMAIL_FROM: "Study <account@example.com>",
+        NEXTAUTH_URL: "https://study.example",
+      },
+      async (_url, init) => {
+        sent = JSON.parse(init.body);
+        return Response.json({ id: "accepted" });
+      },
+    );
+    assert.ok(
+      sent.text.includes(
+        `https://study.example/${purpose === "ACCOUNT_DELETE" ? "confirm-account-deletion" : "confirm-email-change"}#token=private_test_proof`,
+      ),
+    );
+    assert.doesNotMatch(sent.text, /\?token=/);
+    assert.match(sent.text, /30 minutes/);
+    assert.match(sent.text, /confirm/i);
+  }
+});

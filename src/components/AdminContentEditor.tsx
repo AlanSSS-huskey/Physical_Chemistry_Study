@@ -20,10 +20,21 @@ import {
   suggestSlug,
   validateDraft,
   type EditorLocale,
-  type TranslationDrafts,
 } from "@/lib/editor";
+import {
+  adminMutation,
+  historyErrorMessage,
+  HistoryRequestError,
+  type EditorFields,
+} from "@/lib/content-history-client";
+import { usePrivateDraft } from "@/components/admin/usePrivateDraft";
+import { AutomaticDraftStatus } from "@/components/admin/AutomaticDraftStatus";
+import { ContentHistoryPanel } from "@/components/admin/ContentHistoryPanel";
+import "@/components/admin/admin-recovery.css";
+import { BEFORE_STATE_NAVIGATION } from "@/lib/navigation-guard";
 
 type Props = {
+  adminUserId: string;
   contentId?: string;
   initialTitle?: string;
   initialSlug?: string;
@@ -35,11 +46,8 @@ type Props = {
   initialSubjectSlug?: string;
   initialChapterSlug?: string;
   initialOrder?: number;
+  initialVersion?: number;
   moduleOptions?: string[];
-};
-
-type EditorFields = ArticleMetadataValues & {
-  translations: TranslationDrafts;
 };
 
 function useUnsavedWork(isDirty: boolean, message: string) {
@@ -80,10 +88,18 @@ function useUnsavedWork(isDirty: boolean, message: string) {
         event.stopPropagation();
       }
     };
+    const confirmStateChange = (event: Event) => {
+      if (!event.defaultPrevented && !window.confirm(message)) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+      }
+    };
     window.addEventListener("beforeunload", beforeUnload);
+    window.addEventListener(BEFORE_STATE_NAVIGATION, confirmStateChange);
     document.addEventListener("click", onNavigate, true);
     return () => {
       window.removeEventListener("beforeunload", beforeUnload);
+      window.removeEventListener(BEFORE_STATE_NAVIGATION, confirmStateChange);
       document.removeEventListener("click", onNavigate, true);
     };
   }, [isDirty, message]);
@@ -145,6 +161,7 @@ function useMarkdownPreview(source: string, locale: EditorLocale) {
 }
 
 export function AdminContentEditor({
+  adminUserId,
   contentId,
   initialTitle = "",
   initialSlug = "",
@@ -156,6 +173,7 @@ export function AdminContentEditor({
   initialSubjectSlug = "",
   initialChapterSlug = "",
   initialOrder = 0,
+  initialVersion = 1,
   moduleOptions = [],
 }: Props) {
   const { locale } = useLocale();
@@ -191,6 +209,7 @@ export function AdminContentEditor({
   const [dragging, setDragging] = useState(false);
   const [error, setError] = useState("");
   const [saved, setSaved] = useState(false);
+  const [version, setVersion] = useState(initialVersion);
   const fieldsRef = useRef(fields);
   const editingLocaleRef = useRef(editingLocale);
   const savingRef = useRef(false);
@@ -202,6 +221,19 @@ export function AdminContentEditor({
   const active = fields.translations[editingLocale];
   const preview = useMarkdownPreview(active.body, locale);
   const isDirty = JSON.stringify(fields) !== baseline;
+  const draft = usePrivateDraft(
+    contentId,
+    version,
+    fields,
+    isDirty,
+    (recovered) => {
+      fieldsRef.current = recovered;
+      setFields(recovered);
+      setManualSlug(Boolean(recovered.slug));
+      setSaved(false);
+    },
+    adminUserId,
+  );
   useUnsavedWork(
     isDirty,
     t(
@@ -353,144 +385,188 @@ export function AdminContentEditor({
     setError("");
     setSaved(false);
     try {
+      const draftIdentity = await draft.beginSave();
       const canonical = canonicalTranslation(fields.translations);
-      const response = await fetch(
+      const data = await adminMutation(
         contentId
           ? `/api/admin/content/${encodeURIComponent(contentId)}`
           : "/api/admin/content",
+        contentId ? "PUT" : "POST",
         {
-          method: contentId ? "PUT" : "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            ...fields,
-            title: canonical.title.trim(),
-            body: canonical.body,
-            slug: fields.slug.trim(),
-            subjectSlug:
-              fields.subjectSlug.trim() ||
-              (fields.slug.includes("/") ? fields.slug.split("/")[0] : "notes"),
-            chapterSlug:
-              fields.chapterSlug.trim() || fields.slug.split("/").at(-1),
-            order: Number(fields.order),
-          }),
+          ...fields,
+          ...draftIdentity,
+          ...(contentId ? { expectedVersion: version } : {}),
+          title: canonical.title.trim(),
+          body: canonical.body,
+          slug: fields.slug.trim(),
+          subjectSlug:
+            fields.subjectSlug.trim() ||
+            (fields.slug.includes("/") ? fields.slug.split("/")[0] : "notes"),
+          chapterSlug:
+            fields.chapterSlug.trim() || fields.slug.split("/").at(-1),
+          order: Number(fields.order),
         },
       );
-      const data = await readApiObject(response);
-      if (!response.ok || typeof data.id !== "string" || !data.id) {
-        setError(
-          adminErrorMessage(
-            typeof data.code === "string" ? data.code : undefined,
-            response.status,
-            locale,
-          ),
-        );
-        return;
-      }
+      if (
+        typeof data.id !== "string" ||
+        !data.id ||
+        typeof data.version !== "number"
+      )
+        throw new HistoryRequestError("UNAVAILABLE");
+      setVersion(data.version);
+      draft.completeSave();
       setBaseline(JSON.stringify(fields));
       setSaved(true);
       if (!contentId)
         router.replace(`/admin/edit/${encodeURIComponent(data.id)}?saved=1`);
       router.refresh();
-    } catch {
-      setError(adminErrorMessage("UNAVAILABLE", 0, locale));
+    } catch (failure) {
+      setError(
+        failure instanceof HistoryRequestError &&
+          ["VALIDATION_ERROR", "BUNDLED_SLUG", "CONFLICT"].includes(
+            failure.code,
+          )
+          ? adminErrorMessage(failure.code, failure.status, locale)
+          : historyErrorMessage(failure, locale),
+      );
     } finally {
+      draft.finishSave();
       savingRef.current = false;
       setSaving(false);
     }
   }
 
   return (
-    <form onSubmit={onSave} className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border)] pb-4">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="badge">
-            {fields.isPublished ? t("已发布", "Published") : t("草稿", "Draft")}
-          </span>
-          <span className="text-xs muted" role="status">
-            {isDirty
-              ? t("有未保存的修改", "Unsaved changes")
-              : contentId || saved
-                ? t("所有修改已保存", "All changes saved")
-                : t("新草稿", "New draft")}
-          </span>
+    <>
+      <form onSubmit={onSave} className="space-y-6">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border)] pb-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="badge">
+              {fields.isPublished
+                ? t("已发布", "Published")
+                : t("草稿", "Draft")}
+            </span>
+            <span className="text-xs muted" role="status">
+              {isDirty
+                ? t("有未保存的修改", "Unsaved changes")
+                : contentId || saved
+                  ? t("所有修改已保存", "All changes saved")
+                  : t("新草稿", "New draft")}
+            </span>
+          </div>
+          <button
+            type="submit"
+            disabled={saving || uploading || !draft.ready}
+            className="button"
+          >
+            {saving ? t("正在保存…", "Saving…") : t("保存文章", "Save article")}
+          </button>
         </div>
-        <button type="submit" disabled={saving || uploading} className="button">
-          {saving ? t("正在保存…", "Saving…") : t("保存文章", "Save article")}
-        </button>
-      </div>
-      {error && (
-        <div className="notice notice-error" role="alert">
-          {error}
+        <AutomaticDraftStatus draft={draft} version={version} />
+        {error && (
+          <div className="notice notice-error" role="alert">
+            {error}
+            <details className="mt-3">
+              <summary className="cursor-pointer text-sm font-semibold">
+                {t("复制编辑内容备份", "Copy a backup of your writing")}
+              </summary>
+              <label className="mt-2 block text-xs">
+                {t(
+                  "以下包括两种语言与设置。选中后复制保存。",
+                  "This includes both languages and settings. Select and copy it to keep a backup.",
+                )}
+                <textarea
+                  className="input mt-2 min-h-40 w-full font-mono text-xs"
+                  readOnly
+                  value={JSON.stringify(fields, null, 2)}
+                  onFocus={(event) => event.currentTarget.select()}
+                />
+              </label>
+            </details>
+          </div>
+        )}
+        {saved && (
+          <div className="notice" role="status">
+            {t("文章已保存。", "Article saved.")}
+          </div>
+        )}
+        {uploading && (
+          <div className="notice" role="status">
+            {t(
+              "正在上传图片，可以继续编辑正文…",
+              "Uploading image. You can keep editing…",
+            )}
+          </div>
+        )}
+        <fieldset disabled={saving} className="min-w-0 space-y-6">
+          <legend className="sr-only">
+            {t("文章编辑器", "Article editor")}
+          </legend>
+          <BilingualWritingPane
+            translations={fields.translations}
+            editingLocale={editingLocale}
+            textareaRef={textareaRef}
+            fileInputRef={fileInputRef}
+            uploading={uploading}
+            dragging={dragging}
+            preview={preview}
+            onLanguageChange={(language) => {
+              setEditingLocale(language);
+              setError("");
+            }}
+            onTranslationChange={updateTranslation}
+            onDraggingChange={setDragging}
+            onUploadImage={uploadImage}
+          />
+          <ArticleMetadataFields
+            fields={fields}
+            moduleOptions={moduleOptions}
+            canRegenerateSlug={manualSlug && !contentId}
+            onSlugChange={(value) => {
+              setManualSlug(true);
+              updateField("slug", value);
+            }}
+            onRegenerateSlug={() => {
+              setManualSlug(false);
+              updateField(
+                "slug",
+                suggestSlug(
+                  fields.translations.en.title || fields.translations.zh.title,
+                ),
+              );
+            }}
+            onFieldChange={updateField}
+          />
+        </fieldset>
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--border)] pt-4">
+          <p className="text-xs muted" role="status">
+            {saving
+              ? t("正在保存文章…", "Saving article…")
+              : isDirty
+                ? t("离开前请保存修改。", "Save your changes before leaving.")
+                : contentId || saved
+                  ? t("已与服务器同步。", "Up to date with the server.")
+                  : t(
+                      "填写标题后即可保存草稿。",
+                      "Add a title to save your draft.",
+                    )}
+          </p>
+          <button
+            type="submit"
+            disabled={saving || uploading || !draft.ready}
+            className="button"
+          >
+            {saving ? t("正在保存…", "Saving…") : t("保存文章", "Save article")}
+          </button>
         </div>
-      )}
-      {saved && (
-        <div className="notice" role="status">
-          {t("文章已保存。", "Article saved.")}
-        </div>
-      )}
-      {uploading && (
-        <div className="notice" role="status">
-          {t(
-            "正在上传图片，可以继续编辑正文…",
-            "Uploading image. You can keep editing…",
-          )}
-        </div>
-      )}
-      <fieldset disabled={saving} className="min-w-0 space-y-6">
-        <legend className="sr-only">{t("文章编辑器", "Article editor")}</legend>
-        <BilingualWritingPane
-          translations={fields.translations}
-          editingLocale={editingLocale}
-          textareaRef={textareaRef}
-          fileInputRef={fileInputRef}
-          uploading={uploading}
-          dragging={dragging}
-          preview={preview}
-          onLanguageChange={(language) => {
-            setEditingLocale(language);
-            setError("");
-          }}
-          onTranslationChange={updateTranslation}
-          onDraggingChange={setDragging}
-          onUploadImage={uploadImage}
+      </form>
+      {contentId && (
+        <ContentHistoryPanel
+          contentId={contentId}
+          version={version}
+          hasUnsavedChanges={isDirty}
         />
-        <ArticleMetadataFields
-          fields={fields}
-          moduleOptions={moduleOptions}
-          canRegenerateSlug={manualSlug && !contentId}
-          onSlugChange={(value) => {
-            setManualSlug(true);
-            updateField("slug", value);
-          }}
-          onRegenerateSlug={() => {
-            setManualSlug(false);
-            updateField(
-              "slug",
-              suggestSlug(
-                fields.translations.en.title || fields.translations.zh.title,
-              ),
-            );
-          }}
-          onFieldChange={updateField}
-        />
-      </fieldset>
-      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--border)] pt-4">
-        <p className="text-xs muted" role="status">
-          {saving
-            ? t("正在保存文章…", "Saving article…")
-            : isDirty
-              ? t("离开前请保存修改。", "Save your changes before leaving.")
-              : contentId || saved
-                ? t("已与服务器同步。", "Up to date with the server.")
-                : t(
-                    "填写标题后即可保存草稿。",
-                    "Add a title to save your draft.",
-                  )}
-        </p>
-        <button type="submit" disabled={saving || uploading} className="button">
-          {saving ? t("正在保存…", "Saving…") : t("保存文章", "Save article")}
-        </button>
-      </div>
-    </form>
+      )}
+    </>
   );
 }

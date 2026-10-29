@@ -8,6 +8,7 @@ export type AccountCapabilities = {
   registration: boolean;
   mail: boolean;
   google: boolean;
+  googlePreviewUnavailable?: boolean;
 };
 
 export function useCapabilities() {

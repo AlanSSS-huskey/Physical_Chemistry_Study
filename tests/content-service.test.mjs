@@ -73,6 +73,11 @@ test("draft and private database records shadow same-slug bundled lessons", () =
   for (const record of [row({ isPublic: false }), row({ isPublished: false })])
     assert.deepEqual(mergeLibrarySources([record], [sample("en")], "en"), []);
 });
+test("trashed database records hide their bundled identity even if published flags remain", () => {
+  const trashed = row({ deletedAt: new Date(), isPublished: true });
+  assert.equal(localizeDatabaseContent(trashed, "en").isPublished, false);
+  assert.deepEqual(mergeLibrarySources([trashed], [sample("en")], "en"), []);
+});
 test("database versions override bundled copies while unrelated files remain", () => {
   const items = mergeLibrarySources(
     [row({ title: "Updated", body: "English" })],
