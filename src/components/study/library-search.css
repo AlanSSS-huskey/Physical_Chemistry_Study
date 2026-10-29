@@ -1,0 +1,26 @@
+.private-note-search {
+  display: grid;
+  gap: 0.5rem;
+  max-width: 38rem;
+}
+.private-note-search > label {
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+.private-note-search > div {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.private-note-search input {
+  flex: 1 1 15rem;
+  min-width: 0;
+  min-height: 2.75rem;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 0.3rem;
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 0.85rem;
+}

@@ -4,6 +4,8 @@
 
 新版已发布到[正式网站](https://physical-chemistry-study.vercel.app)。中英文账户、阅读同步、收藏笔记、正文搜索、后台恢复和账户数据管理已上线。205 项自动测试及 51 项正式站检查通过，既有账户与会话保留。真实发信仍待配置。详见[本次正式发布记录](docs/verification/2026-10-29-production-release.md)与[功能开启指南](docs/setup/feature-activation.md)。
 
+后续两轮新增全站快捷搜索、可见章节目录、私人笔记内容搜索，以及有差异预览和冲突保护的笔记/收藏备份导入。无需新迁移或服务。当前 239 项自动测试及 130 项隔离 HTTP 断言通过；参阅[两轮验收记录](docs/verification/2026-10-29-study-iterations.md)与[使用说明](docs/setup/study-iterations.md)。
+
 ## 当前实现
 
 `codex/study-workspace` 新增阅读同步、私人笔记、正文搜索、后台恢复和账户数据管理。

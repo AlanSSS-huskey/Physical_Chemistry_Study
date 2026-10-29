@@ -11,6 +11,8 @@ import {
   type Locale,
 } from "@/lib/i18n";
 import { studyRequest } from "@/lib/study-client";
+import { privateLibraryQuery } from "./library-query";
+import "./library-search.css";
 
 type LibraryKind = "bookmarks" | "notes" | "recent";
 type LibraryItem = {
@@ -76,13 +78,30 @@ function OwnedStudyLibrary({
   const [attempt, setAttempt] = useState(0);
   const [removing, setRemoving] = useState<string | null>(null);
   const [removeError, setRemoveError] = useState(false);
+  const [queryInput, setQueryInput] = useState("");
+  const [query, setQuery] = useState("");
+  const waitingForQuery = kind === "notes" && queryInput.trim() !== query;
   useEffect(() => {
+    if (kind !== "notes") return;
+    const timer = window.setTimeout(
+      () => setQuery(queryInput.trim().slice(0, 200)),
+      350,
+    );
+    return () => window.clearTimeout(timer);
+  }, [queryInput, kind]);
+  useEffect(() => {
+    if (waitingForQuery) {
+      setPhase("loading");
+      setResult(null);
+      return;
+    }
     const abort = new AbortController();
     setPhase("loading");
     setResult(null);
     setRemoveError(false);
+    const requestUrl = privateLibraryQuery(kind, page, locale, query);
     void studyRequest<LibraryData>(
-      `/api/study/library?${new URLSearchParams({ kind, page: String(page), locale })}`,
+      requestUrl.pathname + requestUrl.search,
       userId,
       { signal: abort.signal },
     )
@@ -96,7 +115,7 @@ function OwnedStudyLibrary({
         if (!abort.signal.aborted) setPhase("error");
       });
     return () => abort.abort();
-  }, [kind, page, locale, userId, attempt]);
+  }, [kind, page, locale, userId, attempt, query, waitingForQuery]);
   async function removeBookmark(slug: string) {
     setRemoving(slug);
     setRemoveError(false);
@@ -140,12 +159,59 @@ function OwnedStudyLibrary({
             onClick={() => {
               setKind(value);
               setPage(1);
+              setQueryInput("");
+              setQuery("");
             }}
           >
             {textFor(locale, zh, en)}
           </button>
         ))}
       </nav>
+      {kind === "notes" && (
+        <div className="private-note-search">
+          <label htmlFor="private-note-search">
+            {textFor(locale, "搜索笔记内容", "Search note contents")}
+          </label>
+          <div>
+            <input
+              id="private-note-search"
+              type="search"
+              maxLength={200}
+              autoComplete="off"
+              value={queryInput}
+              placeholder={textFor(
+                locale,
+                "在自己的笔记里找一句话…",
+                "Find a phrase in your own notes…",
+              )}
+              onChange={(event) => {
+                setQueryInput(event.target.value.slice(0, 200));
+                setPage(1);
+              }}
+            />
+            {queryInput && (
+              <button
+                type="button"
+                className="study-text-button"
+                onClick={() => {
+                  setQueryInput("");
+                  setQuery("");
+                  setPage(1);
+                }}
+              >
+                {textFor(locale, "清空搜索", "Clear search")}
+              </button>
+            )}
+          </div>
+          <p className="study-helper">
+            {textFor(
+              locale,
+              "仅搜索自己的笔记文字，搜索词不会进入浏览器地址栏。",
+              "Searches only your own note text. Search terms stay out of the browser address bar.",
+            )}
+          </p>
+        </div>
+      )}
       <p className="study-helper">
         {textFor(
           locale,
@@ -161,16 +227,24 @@ function OwnedStudyLibrary({
               : "Bookmarks are shared between languages. Removing a bookmark keeps your notes and learning progress.",
         )}
       </p>
-      {phase === "loading" && (
+      {(phase === "loading" || waitingForQuery) && (
         <div
           className="study-library-loading panel"
           aria-busy="true"
           role="status"
         >
-          {textFor(locale, "正在读取云端记录…", "Loading your saved records…")}
+          {textFor(
+            locale,
+            kind === "notes" && queryInput.trim()
+              ? "正在搜索私人笔记…"
+              : "正在读取云端记录…",
+            kind === "notes" && queryInput.trim()
+              ? "Searching your private notes…"
+              : "Loading your saved records…",
+          )}
         </div>
       )}
-      {phase === "error" && (
+      {phase === "error" && !waitingForQuery && (
         <div className="notice notice-error space-y-3" role="status">
           <p>
             {textFor(
@@ -198,6 +272,7 @@ function OwnedStudyLibrary({
         </p>
       )}
       {phase === "ready" &&
+        !waitingForQuery &&
         result &&
         (result.items.length ? (
           <>
@@ -319,36 +394,58 @@ function OwnedStudyLibrary({
             <h2>
               {textFor(
                 locale,
-                kind === "notes"
-                  ? "把理解写成自己的话"
-                  : kind === "recent"
-                    ? "从一章开始，留下阅读位置"
-                    : "给值得重读的章节留个位置",
-                kind === "notes"
-                  ? "Put an idea into your own words"
-                  : kind === "recent"
-                    ? "A place to pick up where you left off"
-                    : "Keep a chapter worth returning to",
+                kind === "notes" && query
+                  ? "没有找到匹配的笔记"
+                  : kind === "notes"
+                    ? "把理解写成自己的话"
+                    : kind === "recent"
+                      ? "从一章开始，留下阅读位置"
+                      : "给值得重读的章节留个位置",
+                kind === "notes" && query
+                  ? "No matching private notes"
+                  : kind === "notes"
+                    ? "Put an idea into your own words"
+                    : kind === "recent"
+                      ? "A place to pick up where you left off"
+                      : "Keep a chapter worth returning to",
               )}
             </h2>
             <p className="muted">
               {textFor(
                 locale,
-                kind === "notes"
-                  ? "在任意可阅读的章节展开“我的本章笔记”，这里会自动汇集。"
-                  : kind === "recent"
-                    ? "打开章节并开始阅读，位置会自动同步到这里。"
-                    : "阅读时选择“收藏本章”，即可在这里找到它。",
-                kind === "notes"
-                  ? "Open “My chapter notes” in any readable chapter. Your saved notes will appear here."
-                  : kind === "recent"
-                    ? "Open a chapter and start reading. Your position will sync here automatically."
-                    : "Choose “Bookmark chapter” while reading to find it here again.",
+                kind === "notes" && query
+                  ? "试试更短的关键词，或清空搜索查看全部私人笔记。"
+                  : kind === "notes"
+                    ? "在任意可阅读的章节展开“我的本章笔记”，这里会自动汇集。"
+                    : kind === "recent"
+                      ? "打开章节并开始阅读，位置会自动同步到这里。"
+                      : "阅读时选择“收藏本章”，即可在这里找到它。",
+                kind === "notes" && query
+                  ? "Try a shorter phrase, or clear the search to see all your private notes."
+                  : kind === "notes"
+                    ? "Open “My chapter notes” in any readable chapter. Your saved notes will appear here."
+                    : kind === "recent"
+                      ? "Open a chapter and start reading. Your position will sync here automatically."
+                      : "Choose “Bookmark chapter” while reading to find it here again.",
               )}
             </p>
-            <Link href="/learn" className="button-secondary">
-              {textFor(locale, "浏览章节", "Browse chapters")}
-            </Link>
+            {kind === "notes" && query ? (
+              <button
+                type="button"
+                className="button-secondary"
+                onClick={() => {
+                  setQueryInput("");
+                  setQuery("");
+                  setPage(1);
+                }}
+              >
+                {textFor(locale, "查看全部私人笔记", "Show all private notes")}
+              </button>
+            ) : (
+              <Link href="/learn" className="button-secondary">
+                {textFor(locale, "浏览章节", "Browse chapters")}
+              </Link>
+            )}
           </div>
         ))}
     </section>

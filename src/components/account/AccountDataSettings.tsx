@@ -14,6 +14,7 @@ import {
   PasswordField,
 } from "@/components/auth/AuthFields";
 import type { AccountProfile } from "./account-types";
+import { BackupImport } from "./BackupImport";
 
 type Summary = {
   mail: boolean;
@@ -231,6 +232,12 @@ export function AccountDataSettings({
             </button>
           </div>
         </div>
+        <BackupImport
+          accountUserId={profile.id}
+          accountLabel={
+            profile.email || profile.name || t("当前账户", "Current account")
+          }
+        />
         {loadError && (
           <div className="auth-stack">
             <AuthFeedback message={loadError} />

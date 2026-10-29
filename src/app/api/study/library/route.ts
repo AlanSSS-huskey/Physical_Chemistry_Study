@@ -5,6 +5,7 @@ import { resolveContentAccess } from "@/lib/content-access";
 import { studyUser, studyResponse, studyFailure } from "@/lib/study-server";
 import type { StudyLocale } from "@/lib/study-state";
 import { studyCollectionItem } from "@/lib/study-privacy";
+import { privateNoteFilter } from "@/lib/private-note-search";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export async function GET(request: Request) {
@@ -44,17 +45,18 @@ export async function GET(request: Request) {
           orderBy: [{ createdAt: "desc" }, { id: "desc" }],
         }),
       ]);
-    else if (kind === "notes")
+    else if (kind === "notes") {
+      const where = privateNoteFilter(userId, params.get("q"));
       [total, records] = await Promise.all([
-        prisma.personalNote.count({ where: { userId, body: { not: "" } } }),
+        prisma.personalNote.count({ where }),
         prisma.personalNote.findMany({
-          where: { userId, body: { not: "" } },
+          where,
           take,
           skip,
           orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
         }),
       ]);
-    else
+    } else
       [total, records] = await Promise.all([
         prisma.readingPosition.count({ where: { userId } }),
         prisma.readingPosition.findMany({
