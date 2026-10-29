@@ -198,7 +198,9 @@
 }
 [data-study-body] h2[id],
 [data-study-body] h3[id] {
-  scroll-margin-top: 8rem;
+  /* The root already supplies 6rem scroll padding. Keep their combined
+     anchor offset within the outline's 140px active-section marker. */
+  scroll-margin-top: 2rem;
 }
 @media (max-width: 1280px) {
   .quick-search-trigger kbd {
