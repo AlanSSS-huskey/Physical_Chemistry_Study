@@ -161,6 +161,9 @@ export default async function AccountPage() {
         {user.name && user.email && (
           <span className="muted text-sm">{user.email}</span>
         )}
+        <Link className="button-secondary" href="/account/settings">
+          {textFor(locale, "账户设置", "Account settings")}
+        </Link>
       </div>
       <div className="grid gap-4 sm:grid-cols-3">
         {[

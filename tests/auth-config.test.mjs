@@ -28,14 +28,21 @@ test("authentication requires database sessions and never falls back to JWT", ()
   );
 });
 
-test("missing secret or disabled Google is unconfigured in every environment", () => {
+test("core sessions require a secret and remain available when Google is disabled", () => {
   assert.equal(
     authConfiguration({ ...ready, NEXTAUTH_SECRET: "" }).status,
     "unconfigured",
   );
   assert.equal(
     authConfiguration({ ...ready, DISABLE_GOOGLE_LOGIN: "true" }).status,
-    "unconfigured",
+    "ready",
+  );
+  assert.equal(
+    authConfiguration({
+      DATABASE_URL: ready.DATABASE_URL,
+      NEXTAUTH_SECRET: ready.NEXTAUTH_SECRET,
+    }).status,
+    "ready",
   );
 });
 

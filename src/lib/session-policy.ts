@@ -166,6 +166,15 @@ export async function googleOAuthState(
 }
 
 export type ObservedSession = Pick<AdapterSession, "sessionToken" | "expires">;
+type SessionActivity = {
+  createdAt?: Date;
+  lastActiveAt?: Date;
+  userAgent?: string | null;
+};
+export const SESSION_ACTIVITY_INTERVAL_MS = 60_000;
+function cleanUserAgent(value: string | undefined): string | null {
+  return value?.replace(/[\x00-\x1f\x7f]/g, "").slice(0, 512) || null;
+}
 
 /** Keep absolute lifetimes: NextAuth's default rolling update must not extend them. */
 export function createSessionPolicyAdapter(
@@ -173,6 +182,12 @@ export function createSessionPolicyAdapter(
   options: {
     now?: () => number;
     observe?: (session: ObservedSession) => void;
+    userAgent?: string;
+    touchSession?: (
+      token: string,
+      at: Date,
+      userAgent?: string,
+    ) => Promise<void>;
   } = {},
 ): Adapter {
   const now = options.now ?? Date.now;
@@ -203,9 +218,26 @@ export function createSessionPolicyAdapter(
   async function getSessionAndUser(token: string) {
     const record = await read!(token);
     if (!record) return null;
-    if (record.session.expires.getTime() <= now()) {
+    const timestamp = now();
+    if (record.session.expires.getTime() <= timestamp) {
       await deleteSession(token);
       return null;
+    }
+    const activity = record.session as AdapterSession & SessionActivity;
+    const lastActive = activity.lastActiveAt?.getTime();
+    if (
+      options.touchSession &&
+      (lastActive === undefined ||
+        !Number.isFinite(lastActive) ||
+        timestamp - lastActive >= SESSION_ACTIVITY_INTERVAL_MS)
+    ) {
+      const at = new Date(timestamp);
+      const userAgent = !activity.userAgent
+        ? cleanUserAgent(options.userAgent) || undefined
+        : undefined;
+      await options.touchSession(token, at, userAgent);
+      activity.lastActiveAt = at;
+      if (userAgent) activity.userAgent = userAgent;
     }
     options.observe?.(record.session);
     return record;
@@ -217,10 +249,15 @@ export function createSessionPolicyAdapter(
       const kind = policyToken.exec(data.sessionToken)?.[1];
       const seconds =
         kind === "s" ? BROWSER_SESSION_SECONDS : REMEMBERED_SESSION_SECONDS;
-      const session = await create({
+      const timestamp = now();
+      const dataWithActivity = {
         ...data,
-        ...(kind ? { expires: new Date(now() + seconds * 1000) } : {}),
-      });
+        ...(kind ? { expires: new Date(timestamp + seconds * 1000) } : {}),
+        createdAt: new Date(timestamp),
+        lastActiveAt: new Date(timestamp),
+        userAgent: cleanUserAgent(options.userAgent),
+      };
+      const session = await create(dataWithActivity);
       options.observe?.(session);
       return session;
     },

@@ -17,17 +17,10 @@ export function hasValidDatabaseUrl(value: string | undefined): boolean {
 export function authConfiguration(env: Environment): {
   status: "ready" | "unconfigured";
 } {
-  const googleId = env.GOOGLE_CLIENT_ID?.trim() || env.AUTH_GOOGLE_ID?.trim();
-  const googleSecret =
-    env.GOOGLE_CLIENT_SECRET?.trim() || env.AUTH_GOOGLE_SECRET?.trim();
   const secret = env.NEXTAUTH_SECRET?.trim() || env.AUTH_SECRET?.trim();
   return {
     status:
-      env.DISABLE_GOOGLE_LOGIN !== "true" &&
-      googleId &&
-      googleSecret &&
-      secret &&
-      hasValidDatabaseUrl(env.DATABASE_URL)
+      secret && hasValidDatabaseUrl(env.DATABASE_URL)
         ? "ready"
         : "unconfigured",
   };

@@ -88,6 +88,7 @@ async function handleAuth(
         NextAuth(
           getAuthOptions({
             remember,
+            userAgent: req.headers.get("user-agent") || undefined,
             observe(session) {
               observedSession = session;
             },
